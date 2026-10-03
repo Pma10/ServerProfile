@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +30,7 @@ public final class ProfileManager {
 
     private ProfileConfig config;
     private SettingsSnapshot sessionBackup;
+    private ProfileRules sessionRules;
     private String activeProfile;
 
     public ProfileManager() {
@@ -41,14 +43,18 @@ public final class ProfileManager {
         }
 
         try {
-            config.recoveryBackup.apply(client.options);
+            ProfileRules rules = config.recoveryRules == null ? new ProfileRules() : config.recoveryRules;
+            config.recoveryBackup.apply(client.options, rules);
             persistOptions(client);
+
             LOGGER.info("Restored client settings left behind by an interrupted Server Profiles session");
+
             config.recoveryBackup = null;
+            config.recoveryRules = null;
             config.recoveryProfile = null;
             save();
         } catch (RuntimeException exception) {
-            LOGGER.error("Failed to restore recovery settings", exception);
+            LOGGER.error("Failed to restore recovery settings; the recovery snapshot was kept", exception);
         }
     }
 
@@ -120,7 +126,8 @@ public final class ProfileManager {
         }
 
         for (int i = 0; i < normalized.length(); i++) {
-            if (Character.isWhitespace(normalized.charAt(i))) {
+            char character = normalized.charAt(i);
+            if (Character.isWhitespace(character) || Character.isISOControl(character)) {
                 return false;
             }
         }
@@ -153,6 +160,10 @@ public final class ProfileManager {
         ServerProfile exact = config.profiles.get(normalizedTarget);
         if (exact != null) {
             return new Match(normalizedTarget, exact);
+        }
+
+        if ("singleplayer".equals(normalizedTarget)) {
+            return null;
         }
 
         if (!hostTarget.equals(normalizedTarget)) {
@@ -193,6 +204,7 @@ public final class ProfileManager {
         }
 
         ServerProfile profile = config.profiles.computeIfAbsent(normalized, ignored -> new ServerProfile());
+        profile.normalize();
         profile.settings = SettingsSnapshot.capture(client.options);
         save();
         return normalized;
@@ -222,6 +234,31 @@ public final class ProfileManager {
         return profile.enabled;
     }
 
+    public Boolean toggleRule(String key, ProfileRules.Setting setting) {
+        ServerProfile profile = getProfile(key);
+        if (profile == null) {
+            return null;
+        }
+
+        profile.normalize();
+        boolean enabled = !profile.rules.get(setting);
+        profile.rules.set(setting, enabled);
+        save();
+        return enabled;
+    }
+
+    public boolean setAllRules(String key, boolean enabled) {
+        ServerProfile profile = getProfile(key);
+        if (profile == null) {
+            return false;
+        }
+
+        profile.normalize();
+        profile.rules.setAll(enabled);
+        save();
+        return true;
+    }
+
     public boolean applyProfile(String key, Minecraft client) {
         String normalized = normalizeProfileKey(key);
         ServerProfile profile = config.profiles.get(normalized);
@@ -230,6 +267,7 @@ public final class ProfileManager {
             return false;
         }
 
+        profile.normalize();
         applyMatch(client, new Match(normalized, profile), false);
         return true;
     }
@@ -240,6 +278,7 @@ public final class ProfileManager {
             return false;
         }
 
+        match.profile().normalize();
         applyMatch(client, match, false);
         return true;
     }
@@ -249,12 +288,16 @@ public final class ProfileManager {
             return false;
         }
 
-        SettingsSnapshot backup = sessionBackup;
-        clearSessionState();
-
-        backup.apply(client.options);
-        persistOptions(client);
-        return true;
+        try {
+            ProfileRules rules = sessionRules == null ? new ProfileRules() : sessionRules;
+            sessionBackup.apply(client.options, rules);
+            persistOptions(client);
+            clearSessionState();
+            return true;
+        } catch (RuntimeException exception) {
+            LOGGER.error("Failed to restore previous settings; the recovery snapshot was kept", exception);
+            return false;
+        }
     }
 
     public boolean hasSessionBackup() {
@@ -269,25 +312,42 @@ public final class ProfileManager {
         config.restoreOnDisconnect = !config.restoreOnDisconnect;
 
         if (!config.restoreOnDisconnect) {
+            sessionBackup = null;
+            sessionRules = null;
             config.recoveryBackup = null;
+            config.recoveryRules = null;
             config.recoveryProfile = null;
-        } else if (sessionBackup != null) {
-            config.recoveryBackup = sessionBackup;
-            config.recoveryProfile = activeProfile;
         }
 
         save();
     }
 
     private void applyMatch(Minecraft client, Match match, boolean automatic) {
-        if (config.restoreOnDisconnect && sessionBackup == null) {
-            sessionBackup = SettingsSnapshot.capture(client.options);
+        ProfileRules rules = match.profile().rules == null ? new ProfileRules() : match.profile().rules;
+
+        if (rules.enabledCount() == 0) {
+            LOGGER.info("Profile '{}' matched '{}' but manages no settings", match.key(), currentTarget(client));
+            return;
+        }
+
+        if (config.restoreOnDisconnect) {
+            if (sessionBackup == null) {
+                sessionBackup = SettingsSnapshot.capture(client.options);
+                sessionRules = ProfileRules.none();
+            }
+
+            if (sessionRules == null) {
+                sessionRules = ProfileRules.none();
+            }
+
+            sessionRules.merge(rules);
             config.recoveryBackup = sessionBackup;
+            config.recoveryRules = sessionRules.copy();
             config.recoveryProfile = match.key();
             save();
         }
 
-        match.profile().settings.apply(client.options);
+        match.profile().settings.apply(client.options, rules);
         activeProfile = match.key();
         persistOptions(client);
 
@@ -299,11 +359,14 @@ public final class ProfileManager {
 
     private void finishSession(Minecraft client) {
         if (sessionBackup != null && config.restoreOnDisconnect) {
-            SettingsSnapshot backup = sessionBackup;
-            clearSessionState();
-            backup.apply(client.options);
-            persistOptions(client);
-            return;
+            try {
+                ProfileRules rules = sessionRules == null ? new ProfileRules() : sessionRules;
+                sessionBackup.apply(client.options, rules);
+                persistOptions(client);
+            } catch (RuntimeException exception) {
+                LOGGER.error("Failed to restore settings on disconnect; recovery data was kept", exception);
+                return;
+            }
         }
 
         clearSessionState();
@@ -311,8 +374,10 @@ public final class ProfileManager {
 
     private void clearSessionState() {
         sessionBackup = null;
+        sessionRules = null;
         activeProfile = null;
         config.recoveryBackup = null;
+        config.recoveryRules = null;
         config.recoveryProfile = null;
         save();
     }
@@ -330,10 +395,10 @@ public final class ProfileManager {
             return new ProfileConfig();
         }
 
-        try (Reader reader = Files.newBufferedReader(configPath)) {
+        try (Reader reader = Files.newBufferedReader(configPath, StandardCharsets.UTF_8)) {
             ProfileConfig loaded = GSON.fromJson(reader, ProfileConfig.class);
             if (loaded == null) {
-                loaded = new ProfileConfig();
+                throw new IllegalStateException("Config file contained no JSON object");
             }
 
             loaded.normalize();
@@ -341,28 +406,52 @@ public final class ProfileManager {
             Map<String, ServerProfile> normalizedProfiles = new LinkedHashMap<>();
             for (Map.Entry<String, ServerProfile> entry : loaded.profiles.entrySet()) {
                 String key = normalizeProfileKey(entry.getKey());
-                if (isValidProfileKey(key) && entry.getValue() != null) {
-                    normalizedProfiles.put(key, entry.getValue());
+                ServerProfile profile = entry.getValue();
+
+                if (isValidProfileKey(key) && profile != null) {
+                    profile.normalize();
+
+                    if (normalizedProfiles.put(key, profile) != null) {
+                        LOGGER.warn("Multiple profile keys normalized to '{}'; the last profile was kept", key);
+                    }
                 }
             }
 
             loaded.profiles = normalizedProfiles;
-            loaded.version = Math.max(loaded.version, 2);
+            loaded.version = Math.max(loaded.version, 3);
             return loaded;
         } catch (Exception exception) {
-            LOGGER.error("Failed to load {}", configPath, exception);
+            LOGGER.error("Failed to load {}; starting with a clean config", configPath, exception);
+            backupBrokenConfig();
             return new ProfileConfig();
         }
     }
 
+    private void backupBrokenConfig() {
+        if (!Files.exists(configPath)) {
+            return;
+        }
+
+        Path backupPath = configPath.resolveSibling(
+            "serverprofiles.broken-" + System.currentTimeMillis() + ".json"
+        );
+
+        try {
+            Files.move(configPath, backupPath, StandardCopyOption.REPLACE_EXISTING);
+            LOGGER.warn("Moved unreadable Server Profiles config to {}", backupPath);
+        } catch (Exception backupException) {
+            LOGGER.error("Could not back up unreadable Server Profiles config", backupException);
+        }
+    }
+
     private void save() {
-        config.version = 2;
+        config.version = 3;
 
         try {
             Files.createDirectories(configPath.getParent());
             Path temporary = configPath.resolveSibling(configPath.getFileName() + ".tmp");
 
-            try (Writer writer = Files.newBufferedWriter(temporary)) {
+            try (Writer writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8)) {
                 GSON.toJson(config, writer);
             }
 

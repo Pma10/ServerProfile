@@ -26,7 +26,7 @@ public final class ProfilesListScreen extends Screen {
     @Override
     protected void init() {
         List<String> keys = manager.profileKeys();
-        int pageSize = height >= 300 ? 5 : 4;
+        int pageSize = height >= 300 ? 5 : 3;
         int pageCount = Math.max(1, (keys.size() + pageSize - 1) / pageSize);
 
         page = Math.max(0, Math.min(page, pageCount - 1));
@@ -98,6 +98,9 @@ public final class ProfilesListScreen extends Screen {
         y += 26;
 
         ServerProfile selectedProfile = selectedKey == null ? null : manager.getProfile(selectedKey);
+        if (selectedProfile != null) {
+            selectedProfile.normalize();
+        }
 
         Button toggleButton = addRenderableWidget(Button.builder(
             selectedProfile != null && selectedProfile.enabled
@@ -137,6 +140,22 @@ public final class ProfilesListScreen extends Screen {
         ).bounds(x, y, halfWidth, 20).build());
         editButton.active = selectedProfile != null;
 
+        Button rulesButton = addRenderableWidget(Button.builder(
+            selectedProfile == null
+                ? Component.translatable("screen.serverprofiles.managed_settings_short")
+                : Component.translatable(
+                    "screen.serverprofiles.managed_settings_short_count",
+                    selectedProfile.rules.enabledCount(),
+                    ProfileRules.Setting.values().length
+                ),
+            button -> Minecraft.getInstance().setScreen(
+                new ProfileRulesScreen(this, manager, selectedKey)
+            )
+        ).bounds(x + halfWidth + 4, y, halfWidth, 20).build());
+        rulesButton.active = selectedProfile != null;
+
+        y += 24;
+
         boolean confirming = selectedKey != null && selectedKey.equals(confirmDeleteKey);
         Button deleteButton = addRenderableWidget(Button.builder(
             confirming
@@ -158,15 +177,13 @@ public final class ProfilesListScreen extends Screen {
                 confirmDeleteKey = null;
                 rebuildWidgets();
             }
-        ).bounds(x + halfWidth + 4, y, halfWidth, 20).build());
+        ).bounds(x, y, halfWidth, 20).build());
         deleteButton.active = selectedProfile != null;
-
-        y += 28;
 
         addRenderableWidget(Button.builder(
             Component.translatable("screen.serverprofiles.done"),
             button -> onClose()
-        ).bounds(x, y, contentWidth, 20).build());
+        ).bounds(x + halfWidth + 4, y, halfWidth, 20).build());
     }
 
     @Override

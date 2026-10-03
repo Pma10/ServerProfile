@@ -19,6 +19,7 @@ public final class ServerProfilesScreen extends Screen {
     private Button saveButton;
     private Button applyButton;
     private Button enabledButton;
+    private Button rulesButton;
 
     public ServerProfilesScreen(Screen parent, ProfileManager manager) {
         super(Component.translatable("screen.serverprofiles.title"));
@@ -37,6 +38,7 @@ public final class ServerProfilesScreen extends Screen {
 
         int contentWidth = Math.min(300, width - 40);
         int x = width / 2 - contentWidth / 2;
+        int halfWidth = (contentWidth - 4) / 2;
 
         profileKeyBox = new EditBox(
             font,
@@ -53,8 +55,6 @@ public final class ServerProfilesScreen extends Screen {
             updateButtonState();
         });
         addRenderableWidget(profileKeyBox);
-
-        int halfWidth = (contentWidth - 4) / 2;
 
         saveButton = addRenderableWidget(Button.builder(
             Component.translatable("screen.serverprofiles.save_as"),
@@ -97,6 +97,13 @@ public final class ServerProfilesScreen extends Screen {
             )
         ).bounds(x + halfWidth + 4, 128, halfWidth, 20).build());
 
+        rulesButton = addRenderableWidget(Button.builder(
+            Component.empty(),
+            button -> Minecraft.getInstance().setScreen(
+                new ProfileRulesScreen(this, manager, manager.normalizeProfileKey(draftKey))
+            )
+        ).bounds(x, 152, contentWidth, 20).build());
+
         Button restoreButton = addRenderableWidget(Button.builder(
             Component.translatable("screen.serverprofiles.restore_previous"),
             button -> {
@@ -107,7 +114,7 @@ public final class ServerProfilesScreen extends Screen {
                 }
                 updateButtonState();
             }
-        ).bounds(x, 152, halfWidth, 20).build());
+        ).bounds(x, 176, halfWidth, 20).build());
         restoreButton.active = manager.hasSessionBackup();
 
         addRenderableWidget(Button.builder(
@@ -118,12 +125,12 @@ public final class ServerProfilesScreen extends Screen {
                 manager.toggleRestoreOnDisconnect();
                 rebuildWidgets();
             }
-        ).bounds(x + halfWidth + 4, 152, halfWidth, 20).build());
+        ).bounds(x + halfWidth + 4, 176, halfWidth, 20).build());
 
         addRenderableWidget(Button.builder(
             Component.translatable("screen.serverprofiles.done"),
             button -> onClose()
-        ).bounds(x, 176, contentWidth, 20).build());
+        ).bounds(x, 200, contentWidth, 20).build());
 
         updateButtonState();
     }
@@ -147,7 +154,7 @@ public final class ServerProfilesScreen extends Screen {
     }
 
     private void updateButtonState() {
-        if (saveButton == null || applyButton == null || enabledButton == null) {
+        if (saveButton == null || applyButton == null || enabledButton == null || rulesButton == null) {
             return;
         }
 
@@ -157,13 +164,25 @@ public final class ServerProfilesScreen extends Screen {
         saveButton.active = valid;
         applyButton.active = target != null && profile != null && profile.settings != null;
         enabledButton.active = profile != null;
+        rulesButton.active = profile != null;
 
         if (profile == null) {
             enabledButton.setMessage(Component.translatable("screen.serverprofiles.profile_missing"));
-        } else if (profile.enabled) {
-            enabledButton.setMessage(Component.translatable("screen.serverprofiles.profile_enabled"));
+            rulesButton.setMessage(Component.translatable("screen.serverprofiles.managed_settings_unavailable"));
         } else {
-            enabledButton.setMessage(Component.translatable("screen.serverprofiles.profile_disabled"));
+            profile.normalize();
+
+            enabledButton.setMessage(Component.translatable(
+                profile.enabled
+                    ? "screen.serverprofiles.profile_enabled"
+                    : "screen.serverprofiles.profile_disabled"
+            ));
+
+            rulesButton.setMessage(Component.translatable(
+                "screen.serverprofiles.managed_settings",
+                profile.rules.enabledCount(),
+                ProfileRules.Setting.values().length
+            ));
         }
     }
 
@@ -199,8 +218,9 @@ public final class ServerProfilesScreen extends Screen {
         );
 
         ServerProfile profile = manager.getProfile(draftKey);
-        if (height >= 260 && profile != null && profile.settings != null) {
+        if (height >= 300 && profile != null && profile.settings != null) {
             SettingsSnapshot settings = profile.settings;
+
             graphics.drawCenteredString(
                 font,
                 Component.translatable(
@@ -211,7 +231,7 @@ public final class ServerProfilesScreen extends Screen {
                     settings.simulationDistance
                 ),
                 width / 2,
-                208,
+                232,
                 0xB8B8B8
             );
 
@@ -238,38 +258,36 @@ public final class ServerProfilesScreen extends Screen {
                     vsync
                 ),
                 width / 2,
-                222,
+                246,
                 0x969696
             );
 
-            if (height >= 278) {
-                Object entityDistance = settings.entityDistanceScaling == null
-                    ? "-"
-                    : Math.round(settings.entityDistanceScaling * 100.0);
-                Object fovEffects = settings.fovEffectScale == null
-                    ? "-"
-                    : Math.round(settings.fovEffectScale * 100.0);
-                Object brightness = settings.gamma == null
-                    ? "-"
-                    : Math.round(settings.gamma * 100.0);
-                Object guiScale = settings.guiScale == 0
-                    ? Component.translatable("screen.serverprofiles.value.auto")
-                    : settings.guiScale;
+            Object entityDistance = settings.entityDistanceScaling == null
+                ? "-"
+                : Math.round(settings.entityDistanceScaling * 100.0);
+            Object fovEffects = settings.fovEffectScale == null
+                ? "-"
+                : Math.round(settings.fovEffectScale * 100.0);
+            Object brightness = settings.gamma == null
+                ? "-"
+                : Math.round(settings.gamma * 100.0);
+            Object guiScale = settings.guiScale == 0
+                ? Component.translatable("screen.serverprofiles.value.auto")
+                : settings.guiScale;
 
-                graphics.drawCenteredString(
-                    font,
-                    Component.translatable(
-                        "screen.serverprofiles.summary.visual",
-                        entityDistance,
-                        fovEffects,
-                        brightness,
-                        guiScale
-                    ),
-                    width / 2,
-                    236,
-                    0x808080
-                );
-            }
+            graphics.drawCenteredString(
+                font,
+                Component.translatable(
+                    "screen.serverprofiles.summary.visual",
+                    entityDistance,
+                    fovEffects,
+                    brightness,
+                    guiScale
+                ),
+                width / 2,
+                260,
+                0x808080
+            );
         }
 
         if (!status.getString().isEmpty()) {

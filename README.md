@@ -1,21 +1,27 @@
 # Server Profiles
 
-A client-side Fabric mod that automatically switches Minecraft settings for each server.
-
-## What it does
-
-Press **O** in-game to open Server Profiles. The current server address is filled in automatically.
-
-1. Adjust Minecraft settings the way you want for that server.
-2. Open Server Profiles and press **Save current**.
-3. The next time you join, the profile is applied automatically.
-4. When you leave, your previous settings can be restored automatically.
+Server Profiles is a client-side Fabric mod that automatically switches selected Minecraft settings for each server.
 
 No server-side installation is required.
 
+> Current status: public beta for Minecraft 1.21.11.
+
+## Quick start
+
+1. Install Fabric Loader, Fabric API, and Server Profiles.
+2. Join a server.
+3. Adjust Minecraft settings the way you want for that server.
+4. Press **O** to open Server Profiles.
+5. Press **Save current**.
+6. Optionally open **Managed settings** and disable any settings that should not be controlled by that profile.
+
+The next time you join, the matching profile is applied automatically.
+
+If Mod Menu is installed, Server Profiles can also be opened from its config button.
+
 ## Profile patterns
 
-Profiles can target an exact server or a group of servers.
+Profiles can target one server or a group of servers.
 
 - `play.example.com` — one server
 - `play.example.com:25566` — one custom-port endpoint
@@ -25,11 +31,17 @@ Profiles can target an exact server or a group of servers.
 
 The default Minecraft port `:25565` is normalized away, so `play.example.com` and `play.example.com:25565` share the same profile.
 
-An exact disabled profile takes precedence over a wildcard profile, which can be used as an exclusion.
+Matching priority is:
+
+1. Exact address and port
+2. Host-only profile
+3. Most-specific wildcard profile
+
+An exact disabled profile takes precedence over wildcard profiles, so it can be used as an exclusion.
 
 ## Managed settings
 
-Server Profiles currently stores:
+Each profile can independently enable or disable management of:
 
 - FOV
 - Mouse sensitivity
@@ -45,50 +57,84 @@ Server Profiles currently stores:
 - FOV effect scale
 - Brightness
 
-Profiles created with v0.1 remain compatible. Settings introduced in v0.2 are left untouched until that profile is saved again.
+A profile may manage only the settings you want. For example, a PvP profile can change sensitivity, FOV, particles, and render distance without touching volume or brightness.
+
+## Safe restoration
+
+With **Restore on exit** enabled, Server Profiles captures the current settings before it applies a profile.
+
+When you disconnect, only the settings that were actually managed during that session are restored. Unmanaged settings are left alone.
+
+If Minecraft exits unexpectedly before restoration can happen, the recovery snapshot is retained in `config/serverprofiles.json` and applied on the next launch.
+
+If the config file cannot be parsed, Server Profiles moves it to a timestamped `serverprofiles.broken-*.json` file instead of silently overwriting it.
 
 ## Profile manager
 
 The in-game profile manager supports:
 
 - Creating and overwriting profiles from the current settings
-- Wildcard patterns directly from the GUI
+- Editing wildcard patterns directly
 - Browsing all saved profiles
-- Enabling and disabling individual profiles
-- Applying a saved profile manually
+- Enabling and disabling profiles
+- Choosing exactly which settings each profile manages
+- Manually applying a saved profile
 - Selecting an existing profile for editing
 - Two-step deletion confirmation
 - English and Korean UI
 
-Profiles are stored in `config/serverprofiles.json`.
+Profiles are stored in:
 
-## Recovery
+```text
+config/serverprofiles.json
+```
 
-With **Restore on exit** enabled, Server Profiles keeps a temporary recovery snapshot before applying a profile. It restores the previous settings when you disconnect.
+## Installation
 
-If Minecraft closes unexpectedly before the restore can happen, the recovery snapshot is applied on the next launch.
-
-## Requirements
-
-### Running the mod
+### Required
 
 - Minecraft 1.21.11
 - Fabric Loader 0.19.5+
 - Fabric API
 - Java 21+
 
-### Building from source
+### Optional
+
+- Mod Menu 17.x — adds a config button for Server Profiles
+
+## Building from source
+
+The current Loom build tooling requires JDK 25, while the produced mod targets Java 21.
+
+Requirements:
 
 - JDK 25+
 - Gradle 9.7.1+
 
-The mod itself is compiled for Java 21. JDK 25 is only required by the current Loom build tooling.
-
 ```bash
-gradle build
+gradle clean build
 ```
 
-The built JAR is written to `build/libs`. GitHub Actions also uploads the remapped JAR as a workflow artifact.
+The distributable JAR is written to `build/libs`.
+
+GitHub Actions also builds the JAR on every push to `main`. Pushing a tag matching the version in `gradle.properties`, for example:
+
+```bash
+git tag v0.3.0-beta.1
+git push origin v0.3.0-beta.1
+```
+
+creates a GitHub Release containing the remapped JAR and a SHA-256 checksum file.
+
+## Compatibility
+
+Profiles from v0.1 and v0.2 remain readable. Newly introduced settings are not applied from older profile snapshots until that profile is saved again.
+
+Server Profiles currently manages vanilla Minecraft options only. Settings owned by Sodium, Iris, or other third-party mods are not yet included.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

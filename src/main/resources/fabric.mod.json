@@ -3,9 +3,10 @@
   "id": "serverprofiles",
   "version": "${version}",
   "name": "Server Profiles",
-  "description": "Automatically applies Minecraft client settings per server.",
+  "description": "Automatically switches selected Minecraft client settings for each server.",
   "authors": ["Pma"],
   "contact": {
+    "issues": "https://github.com/Pma10/ServerProfiles/issues",
     "sources": "https://github.com/Pma10/ServerProfiles"
   },
   "license": "MIT",
@@ -13,6 +14,9 @@
   "entrypoints": {
     "client": [
       "kr.pma.serverprofiles.ServerProfilesClient"
+    ],
+    "modmenu": [
+      "kr.pma.serverprofiles.ModMenuIntegration"
     ]
   },
   "depends": {
@@ -20,5 +24,8 @@
     "minecraft": "~1.21.11",
     "java": ">=21",
     "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
   }
 }

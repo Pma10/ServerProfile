@@ -12,7 +12,11 @@ import net.minecraft.resources.Identifier;
 public final class ServerProfilesClient implements ClientModInitializer {
     public static final String MOD_ID = "serverprofiles";
 
-    private final ProfileManager profileManager = new ProfileManager();
+    private static final ProfileManager PROFILE_MANAGER = new ProfileManager();
+
+    public static ProfileManager profileManager() {
+        return PROFILE_MANAGER;
+    }
 
     @Override
     public void onInitializeClient() {
@@ -27,16 +31,16 @@ public final class ServerProfilesClient implements ClientModInitializer {
             category
         ));
 
-        ClientLifecycleEvents.CLIENT_STARTED.register(profileManager::restoreCrashBackup);
-        ClientLifecycleEvents.CLIENT_STOPPING.register(profileManager::onClientStopping);
+        ClientLifecycleEvents.CLIENT_STARTED.register(PROFILE_MANAGER::restoreCrashBackup);
+        ClientLifecycleEvents.CLIENT_STOPPING.register(PROFILE_MANAGER::onClientStopping);
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> profileManager.onJoin(client));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> profileManager.onDisconnect(client));
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> PROFILE_MANAGER.onJoin(client));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> PROFILE_MANAGER.onDisconnect(client));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openScreen.consumeClick()) {
                 if (client.screen == null) {
-                    client.setScreen(new ServerProfilesScreen(null, profileManager));
+                    client.setScreen(new ServerProfilesScreen(null, PROFILE_MANAGER));
                 }
             }
         });

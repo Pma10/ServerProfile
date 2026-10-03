@@ -14,8 +14,8 @@ public final class SettingsSnapshot {
     public boolean viewBobbing;
     public double masterVolume;
 
-    // Added in config version 2. Wrappers intentionally stay nullable so
-    // profiles created by v0.1 do not overwrite these settings with defaults.
+    // Added in config version 2. Wrappers stay nullable so old profiles
+    // do not overwrite settings that did not exist when they were saved.
     public Double entityDistanceScaling;
     public Integer framerateLimit;
     public Boolean vsync;
@@ -41,32 +41,49 @@ public final class SettingsSnapshot {
     }
 
     public void apply(Options options) {
-        options.fov().set(fov);
-        options.sensitivity().set(sensitivity);
-        options.renderDistance().set(renderDistance);
-        options.simulationDistance().set(simulationDistance);
+        apply(options, new ProfileRules());
+    }
 
-        if (particles != null) {
+    public void apply(Options options, ProfileRules rules) {
+        ProfileRules effectiveRules = rules == null ? new ProfileRules() : rules;
+
+        if (effectiveRules.fov) {
+            options.fov().set(fov);
+        }
+        if (effectiveRules.sensitivity) {
+            options.sensitivity().set(sensitivity);
+        }
+        if (effectiveRules.renderDistance) {
+            options.renderDistance().set(renderDistance);
+        }
+        if (effectiveRules.simulationDistance) {
+            options.simulationDistance().set(simulationDistance);
+        }
+        if (effectiveRules.particles && particles != null) {
             options.particles().set(particles);
         }
-
-        options.guiScale().set(guiScale);
-        options.bobView().set(viewBobbing);
-        options.getSoundSourceOptionInstance(SoundSource.MASTER).set(masterVolume);
-
-        if (entityDistanceScaling != null) {
+        if (effectiveRules.guiScale) {
+            options.guiScale().set(guiScale);
+        }
+        if (effectiveRules.viewBobbing) {
+            options.bobView().set(viewBobbing);
+        }
+        if (effectiveRules.masterVolume) {
+            options.getSoundSourceOptionInstance(SoundSource.MASTER).set(masterVolume);
+        }
+        if (effectiveRules.entityDistance && entityDistanceScaling != null) {
             options.entityDistanceScaling().set(entityDistanceScaling);
         }
-        if (framerateLimit != null) {
+        if (effectiveRules.framerateLimit && framerateLimit != null) {
             options.framerateLimit().set(framerateLimit);
         }
-        if (vsync != null) {
+        if (effectiveRules.vsync && vsync != null) {
             options.enableVsync().set(vsync);
         }
-        if (fovEffectScale != null) {
+        if (effectiveRules.fovEffects && fovEffectScale != null) {
             options.fovEffectScale().set(fovEffectScale);
         }
-        if (gamma != null) {
+        if (effectiveRules.brightness && gamma != null) {
             options.gamma().set(gamma);
         }
     }
