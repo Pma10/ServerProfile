@@ -138,3 +138,117 @@ jobs:
             EXTRA_ARGS+=(--prerelease)
           fi
           gh release create "$TAG"             release/*             --target "$GITHUB_SHA"             --title "ServerProfile $VERSION"             --generate-notes             "${EXTRA_ARGS[@]}"
+
+
+  publish_modrinth:
+    if: >-
+      (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')) &&
+      vars.MODRINTH_PROJECT_ID != ''
+    needs: [build, release]
+    name: Publish Modrinth / Minecraft ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft:
+          - '1.20'
+          - '1.20.1'
+          - '1.20.2'
+          - '1.20.3'
+          - '1.20.4'
+          - '1.20.5'
+          - '1.20.6'
+          - '1.21'
+          - '1.21.1'
+          - '1.21.2'
+          - '1.21.3'
+          - '1.21.4'
+          - '1.21.5'
+          - '1.21.6'
+          - '1.21.7'
+          - '1.21.8'
+          - '1.21.9'
+          - '1.21.10'
+          - '1.21.11'
+          - '26.1'
+          - '26.2'
+          - '26.3'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve publish metadata
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          else
+            VERSION="$(sed -n 's/^mod_version=//p' gradle.properties)"
+          fi
+
+          if [[ "$VERSION" == *alpha* ]]; then
+            VERSION_TYPE="alpha"
+          elif [[ "$VERSION" == *-* ]]; then
+            VERSION_TYPE="beta"
+          else
+            VERSION_TYPE="release"
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "VERSION_TYPE=$VERSION_TYPE" >> "$GITHUB_ENV"
+
+      - name: Verify Modrinth credentials
+        shell: bash
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          if [ -z "$MODRINTH_TOKEN" ]; then
+            echo "MODRINTH_TOKEN is not configured."
+            exit 1
+          fi
+
+      - name: Download Minecraft ${{ matrix.minecraft }} JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: release-mc${{ matrix.minecraft }}
+          path: modrinth
+
+      - name: Prepare Modrinth changelog
+        shell: bash
+        run: |
+          awk -v version="$VERSION" '
+            index($0, "## " version " ") == 1 { printing=1; next }
+            printing && /^## / { exit }
+            printing { print }
+          ' CHANGELOG.md > modrinth-changelog.md
+
+          if [ ! -s modrinth-changelog.md ]; then
+            echo "ServerProfile $VERSION" > modrinth-changelog.md
+          fi
+
+      - name: Publish to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+
+          files: modrinth/*.jar
+          name: ServerProfile ${{ env.VERSION }} for Minecraft ${{ matrix.minecraft }}
+          version: ${{ env.VERSION }}+${{ matrix.minecraft }}
+          version-type: ${{ env.VERSION_TYPE }}
+          changelog-file: modrinth-changelog.md
+
+          loaders: fabric
+          game-versions: ${{ matrix.minecraft }}
+          game-version-filter: none
+          environment: client
+
+          dependencies: |
+            fabric-api(required){modrinth:P7dR8mSH}
+            modmenu(optional){modrinth:mOgUt4GM}
+
+          retry-attempts: 3
+          retry-delay: 10000
+          fail-mode: fail

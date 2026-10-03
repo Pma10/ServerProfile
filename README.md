@@ -124,6 +124,21 @@ The release workflow builds every supported target, uploads each version-specifi
 
 A commit containing `[release]` uses the version from `gradle.properties`.
 
+### Modrinth publishing
+
+The same release workflow can publish every Minecraft-specific JAR to Modrinth automatically.
+
+Configure these once in **GitHub → Settings → Secrets and variables → Actions**:
+
+- Repository variable `MODRINTH_PROJECT_ID`: the Modrinth project ID or slug.
+- Repository secret `MODRINTH_TOKEN`: a Modrinth personal access token with permission to create versions for the project.
+
+If `MODRINTH_PROJECT_ID` is not configured, the Modrinth jobs are skipped and GitHub Releases continue to work normally.
+
+For each release, ServerProfile publishes one Modrinth version per Minecraft target. For example, release `0.5.1` produces Modrinth versions such as `0.5.1+1.21.11` and `0.5.1+26.3`. This keeps each JAR associated with the exact Minecraft version it was built against.
+
+Fabric API is declared as a required Modrinth dependency and Mod Menu as optional.
+
 ## Compatibility and recovery
 
 The primary mod ID is `serverprofile`. It also provides the legacy `serverprofiles` ID for compatibility with the earlier beta line.
