@@ -1,27 +1,32 @@
-package io.github.pma10.serverprofiles.screen;
+package io.github.pma10.serverprofile.screen;
 
-import io.github.pma10.serverprofiles.profile.ProfileManager;
-import io.github.pma10.serverprofiles.profile.ProfileRules;
-import io.github.pma10.serverprofiles.profile.ServerProfile;
+import io.github.pma10.serverprofile.compat.MinecraftCompat;
+import io.github.pma10.serverprofile.compat.ScreenGraphics;
+import io.github.pma10.serverprofile.profile.ProfileManager;
+import io.github.pma10.serverprofile.profile.ProfileRules;
+import io.github.pma10.serverprofile.profile.ServerProfile;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+//? if >=26.1 {
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else
+/*import net.minecraft.client.gui.GuiGraphics;*/
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
-public final class ProfilesListScreen extends Screen {
-    private final ServerProfilesScreen parent;
+public final class ProfileListScreen extends Screen {
+    private final ServerProfileScreen parent;
     private final ProfileManager manager;
 
     private String selectedKey;
     private String confirmDeleteKey;
     private int page;
 
-    public ProfilesListScreen(ServerProfilesScreen parent, ProfileManager manager, String selectedKey) {
-        super(Component.translatable("screen.serverprofiles.manage_title"));
+    public ProfileListScreen(ServerProfileScreen parent, ProfileManager manager, String selectedKey) {
+        super(Component.translatable("screen.serverprofile.manage_title"));
         this.parent = parent;
         this.manager = manager;
         this.selectedKey = selectedKey;
@@ -78,7 +83,7 @@ public final class ProfilesListScreen extends Screen {
         int halfWidth = (contentWidth - 4) / 2;
 
         Button previousButton = addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.previous"),
+            Component.translatable("screen.serverprofile.previous"),
             button -> {
                 page = Math.max(0, page - 1);
                 selectedKey = null;
@@ -89,7 +94,7 @@ public final class ProfilesListScreen extends Screen {
         previousButton.active = page > 0;
 
         Button nextButton = addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.next"),
+            Component.translatable("screen.serverprofile.next"),
             button -> {
                 page = Math.min(pageCount - 1, page + 1);
                 selectedKey = null;
@@ -108,8 +113,8 @@ public final class ProfilesListScreen extends Screen {
 
         Button toggleButton = addRenderableWidget(Button.builder(
             selectedProfile != null && selectedProfile.enabled
-                ? Component.translatable("screen.serverprofiles.disable")
-                : Component.translatable("screen.serverprofiles.enable"),
+                ? Component.translatable("screen.serverprofile.disable")
+                : Component.translatable("screen.serverprofile.enable"),
             button -> {
                 manager.toggleProfile(selectedKey);
                 confirmDeleteKey = null;
@@ -119,7 +124,7 @@ public final class ProfilesListScreen extends Screen {
         toggleButton.active = selectedProfile != null;
 
         Button applyButton = addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.apply_selected"),
+            Component.translatable("screen.serverprofile.apply_selected"),
             button -> {
                 manager.applyProfile(selectedKey, Minecraft.getInstance());
                 confirmDeleteKey = null;
@@ -134,7 +139,7 @@ public final class ProfilesListScreen extends Screen {
         y += 24;
 
         Button editButton = addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.use_in_editor"),
+            Component.translatable("screen.serverprofile.use_in_editor"),
             button -> {
                 if (selectedKey != null) {
                     parent.selectProfile(selectedKey);
@@ -146,13 +151,13 @@ public final class ProfilesListScreen extends Screen {
 
         Button rulesButton = addRenderableWidget(Button.builder(
             selectedProfile == null
-                ? Component.translatable("screen.serverprofiles.managed_settings_short")
+                ? Component.translatable("screen.serverprofile.managed_settings_short")
                 : Component.translatable(
-                    "screen.serverprofiles.managed_settings_short_count",
+                    "screen.serverprofile.managed_settings_short_count",
                     selectedProfile.rules.enabledCount(),
                     ProfileRules.Setting.values().length
                 ),
-            button -> Minecraft.getInstance().setScreen(
+            button -> MinecraftCompat.setScreen(
                 new ProfileRulesScreen(this, manager, selectedKey)
             )
         ).bounds(x + halfWidth + 4, y, halfWidth, 20).build());
@@ -163,8 +168,8 @@ public final class ProfilesListScreen extends Screen {
         boolean confirming = selectedKey != null && selectedKey.equals(confirmDeleteKey);
         Button deleteButton = addRenderableWidget(Button.builder(
             confirming
-                ? Component.translatable("screen.serverprofiles.confirm_delete")
-                : Component.translatable("screen.serverprofiles.delete"),
+                ? Component.translatable("screen.serverprofile.confirm_delete")
+                : Component.translatable("screen.serverprofile.delete"),
             button -> {
                 if (selectedKey == null) {
                     return;
@@ -185,32 +190,40 @@ public final class ProfilesListScreen extends Screen {
         deleteButton.active = selectedProfile != null;
 
         addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.done"),
+            Component.translatable("screen.serverprofile.done"),
             button -> onClose()
         ).bounds(x + halfWidth + 4, y, halfWidth, 20).build());
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {
+    //? if >=26.1 {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float deltaTicks) {
+        super.extractRenderState(graphics, mouseX, mouseY, deltaTicks);
+    //?} else
+    /*public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {*/
+        //? if <26.1 {
         //? if >=1.20.2 {
-        renderBackground(graphics, mouseX, mouseY, deltaTicks);
+        /*renderBackground(graphics, mouseX, mouseY, deltaTicks);*/
         //?} else
         /*renderBackground(graphics);*/
+        //?}
 
-        graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
-        graphics.drawCenteredString(
+        ScreenGraphics.centered(graphics, font, title, width / 2, 18, 0xFFFFFF);
+        ScreenGraphics.centered(
+            graphics,
             font,
-            Component.translatable("screen.serverprofiles.profile_count", manager.profileKeys().size()),
+            Component.translatable("screen.serverprofile.profile_count", manager.profileKeys().size()),
             width / 2,
             34,
             0xA0A0A0
         );
 
-        super.render(graphics, mouseX, mouseY, deltaTicks);
+        //? if <26.1
+        /*super.render(graphics, mouseX, mouseY, deltaTicks);*/
     }
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        MinecraftCompat.setScreen(parent);
     }
 }

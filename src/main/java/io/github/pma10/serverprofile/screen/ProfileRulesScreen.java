@@ -1,11 +1,16 @@
-package io.github.pma10.serverprofiles.screen;
+package io.github.pma10.serverprofile.screen;
 
-import io.github.pma10.serverprofiles.profile.ProfileManager;
-import io.github.pma10.serverprofiles.profile.ProfileRules;
-import io.github.pma10.serverprofiles.profile.ServerProfile;
+import io.github.pma10.serverprofile.compat.MinecraftCompat;
+import io.github.pma10.serverprofile.compat.ScreenGraphics;
+import io.github.pma10.serverprofile.profile.ProfileManager;
+import io.github.pma10.serverprofile.profile.ProfileRules;
+import io.github.pma10.serverprofile.profile.ServerProfile;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+//? if >=26.1 {
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else
+/*import net.minecraft.client.gui.GuiGraphics;*/
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -16,7 +21,7 @@ public final class ProfileRulesScreen extends Screen {
     private final String profileKey;
 
     public ProfileRulesScreen(Screen parent, ProfileManager manager, String profileKey) {
-        super(Component.translatable("screen.serverprofiles.rules_title"));
+        super(Component.translatable("screen.serverprofile.rules_title"));
         this.parent = parent;
         this.manager = manager;
         this.profileKey = manager.normalizeProfileKey(profileKey);
@@ -60,7 +65,7 @@ public final class ProfileRulesScreen extends Screen {
         int controlsY = startY + ((settings.length + 1) / 2) * rowHeight + 4;
 
         addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.enable_all"),
+            Component.translatable("screen.serverprofile.enable_all"),
             button -> {
                 manager.setAllRules(profileKey, true);
                 rebuildWidgets();
@@ -68,7 +73,7 @@ public final class ProfileRulesScreen extends Screen {
         ).bounds(left, controlsY, columnWidth, 20).build());
 
         addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.disable_all"),
+            Component.translatable("screen.serverprofile.disable_all"),
             button -> {
                 manager.setAllRules(profileKey, false);
                 rebuildWidgets();
@@ -76,7 +81,7 @@ public final class ProfileRulesScreen extends Screen {
         ).bounds(left + columnWidth + gap, controlsY, columnWidth, 20).build());
 
         addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.done"),
+            Component.translatable("screen.serverprofile.done"),
             button -> onClose()
         ).bounds(left, controlsY + 26, totalWidth, 20).build());
     }
@@ -84,32 +89,39 @@ public final class ProfileRulesScreen extends Screen {
     private Component settingLabel(ServerProfile profile, ProfileRules.Setting setting) {
         boolean enabled = profile.rules.get(setting);
         return Component.translatable(
-            "screen.serverprofiles.setting_toggle",
+            "screen.serverprofile.setting_toggle",
             Component.translatable(setting.translationKey()),
             Component.translatable(
                 enabled
-                    ? "screen.serverprofiles.value.on"
-                    : "screen.serverprofiles.value.off"
+                    ? "screen.serverprofile.value.on"
+                    : "screen.serverprofile.value.off"
             )
         );
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {
+    //? if >=26.1 {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float deltaTicks) {
+        super.extractRenderState(graphics, mouseX, mouseY, deltaTicks);
+    //?} else
+    /*public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {*/
+        //? if <26.1 {
         //? if >=1.20.2 {
-        renderBackground(graphics, mouseX, mouseY, deltaTicks);
+        /*renderBackground(graphics, mouseX, mouseY, deltaTicks);*/
         //?} else
         /*renderBackground(graphics);*/
+        //?}
 
         ServerProfile profile = manager.getProfile(profileKey);
         int enabled = profile == null ? 0 : profile.rules.enabledCount();
 
-        graphics.drawCenteredString(font, title, width / 2, 16, 0xFFFFFF);
-        graphics.drawCenteredString(font, Component.literal(profileKey), width / 2, 30, 0xB8B8B8);
-        graphics.drawCenteredString(
+        ScreenGraphics.centered(graphics, font, title, width / 2, 16, 0xFFFFFF);
+        ScreenGraphics.centered(graphics, font, Component.literal(profileKey), width / 2, 30, 0xB8B8B8);
+        ScreenGraphics.centered(
+            graphics,
             font,
             Component.translatable(
-                "screen.serverprofiles.managed_count",
+                "screen.serverprofile.managed_count",
                 enabled,
                 ProfileRules.Setting.values().length
             ),
@@ -118,11 +130,12 @@ public final class ProfileRulesScreen extends Screen {
             0x909090
         );
 
-        super.render(graphics, mouseX, mouseY, deltaTicks);
+        //? if <26.1
+        /*super.render(graphics, mouseX, mouseY, deltaTicks);*/
     }
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        MinecraftCompat.setScreen(parent);
     }
 }

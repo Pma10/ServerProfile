@@ -1,14 +1,17 @@
 # Architecture
 
-Server Profiles keeps the codebase small, but separates responsibilities so new features do not turn the root package into a collection of unrelated classes.
+ServerProfile keeps one source tree and isolates responsibilities by package.
 
 ## Java packages
 
 ```text
-io.github.pma10.serverprofiles
-├─ ServerProfiles
+io.github.pma10.serverprofile
+├─ ServerProfileMod
 ├─ client
-│  └─ ServerProfilesClient
+│  └─ ServerProfileClient
+├─ compat
+│  ├─ MinecraftCompat
+│  └─ ScreenGraphics
 ├─ config
 │  └─ ProfileConfig
 ├─ profile
@@ -17,8 +20,8 @@ io.github.pma10.serverprofiles
 │  ├─ ServerProfile
 │  └─ SettingsSnapshot
 ├─ screen
-│  ├─ ServerProfilesScreen
-│  ├─ ProfilesListScreen
+│  ├─ ServerProfileScreen
+│  ├─ ProfileListScreen
 │  └─ ProfileRulesScreen
 └─ integration
    └─ modmenu
@@ -27,42 +30,42 @@ io.github.pma10.serverprofiles
 
 ### Root
 
-`ServerProfiles` owns application-wide constants such as the mod ID and logger. No feature implementation should be added directly to the root package.
+`ServerProfileMod` contains only application-wide constants such as the mod ID and logger.
 
 ### client
 
-Fabric client bootstrap and event registration only. It wires Minecraft/Fabric lifecycle events to the profile subsystem and opens the UI.
+Fabric client bootstrap and event registration.
+
+### compat
+
+Small version-compatibility shims for Minecraft API moves such as screen access and the 26.x GUI extraction pipeline. Version checks should stay here when they can be isolated cleanly.
 
 ### config
 
-Serialized configuration models. Persistence remains accessed through the profile manager so screens never read or write JSON directly.
+Serialized configuration models.
 
 ### profile
 
-The domain layer: profile matching, managed-setting rules, settings capture/application, session restoration, and config persistence orchestration.
+Profile matching, managed-setting rules, settings capture/application, persistence orchestration, config migration, and restoration.
 
 ### screen
 
-Minecraft GUI screens. Screens call the profile API and contain no direct file-system logic.
+Minecraft GUI screens. Screens use the profile API and do not access the filesystem directly.
 
 ### integration
 
-Optional third-party integrations. Each integration gets its own subpackage so optional dependencies never leak into the core packages.
+Optional third-party integrations, isolated from the core packages.
 
-## Multi-version layout
+## Multi-version strategy
 
-Stonecutter creates one Gradle node per Minecraft target under `versions/`.
+Stonecutter creates one Gradle node per Minecraft target under `versions/`. Shared Java and resources stay under `src/main`.
 
-Each node contains only version-specific build properties:
+Minecraft 1.20 through 1.21.11 use `net.fabricmc.fabric-loom-remap` with Mojang mappings.
 
-```text
-versions/<minecraft-version>/gradle.properties
-```
+Minecraft 26.1 and newer are unobfuscated and use `net.fabricmc.fabric-loom` with standard Gradle dependency configurations and Java 25.
 
-The Java and resource sources remain shared in `src/main`.
-
-When a Minecraft API differs between versions, the smallest possible section is guarded with a Stonecutter directive instead of copying an entire class. This keeps behavior identical across versions and makes API boundaries visible during review.
+Version-specific API differences are kept behind the smallest possible Stonecutter condition instead of copying whole classes.
 
 ## CI rule
 
-A version is considered supported only when its dedicated GitHub Actions matrix job builds successfully. Adding a version to documentation without adding it to the matrix and `versions/` is not considered support.
+A Minecraft version is advertised as supported only when its dedicated GitHub Actions matrix build succeeds.

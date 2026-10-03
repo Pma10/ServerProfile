@@ -1,18 +1,23 @@
-package io.github.pma10.serverprofiles.screen;
+package io.github.pma10.serverprofile.screen;
 
-import io.github.pma10.serverprofiles.profile.ProfileManager;
-import io.github.pma10.serverprofiles.profile.ProfileRules;
-import io.github.pma10.serverprofiles.profile.ServerProfile;
-import io.github.pma10.serverprofiles.profile.SettingsSnapshot;
+import io.github.pma10.serverprofile.compat.MinecraftCompat;
+import io.github.pma10.serverprofile.compat.ScreenGraphics;
+import io.github.pma10.serverprofile.profile.ProfileManager;
+import io.github.pma10.serverprofile.profile.ProfileRules;
+import io.github.pma10.serverprofile.profile.ServerProfile;
+import io.github.pma10.serverprofile.profile.SettingsSnapshot;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+//? if >=26.1 {
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} else
+/*import net.minecraft.client.gui.GuiGraphics;*/
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
-public final class ServerProfilesScreen extends Screen {
+public final class ServerProfileScreen extends Screen {
     private final Screen parent;
     private final ProfileManager manager;
 
@@ -26,8 +31,8 @@ public final class ServerProfilesScreen extends Screen {
     private Button enabledButton;
     private Button rulesButton;
 
-    public ServerProfilesScreen(Screen parent, ProfileManager manager) {
-        super(Component.translatable("screen.serverprofiles.title"));
+    public ServerProfileScreen(Screen parent, ProfileManager manager) {
+        super(Component.translatable("screen.serverprofile.title"));
         this.parent = parent;
         this.manager = manager;
     }
@@ -51,7 +56,7 @@ public final class ServerProfilesScreen extends Screen {
             78,
             contentWidth,
             20,
-            Component.translatable("screen.serverprofiles.profile_key")
+            Component.translatable("screen.serverprofile.profile_key")
         );
         profileKeyBox.setMaxLength(255);
         profileKeyBox.setValue(draftKey);
@@ -62,18 +67,18 @@ public final class ServerProfilesScreen extends Screen {
         addRenderableWidget(profileKeyBox);
 
         saveButton = addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.save_as"),
+            Component.translatable("screen.serverprofile.save_as"),
             button -> saveCurrentSettings()
         ).bounds(x, 104, halfWidth, 20).build());
 
         applyButton = addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.apply_selected"),
+            Component.translatable("screen.serverprofile.apply_selected"),
             button -> {
                 String key = manager.normalizeProfileKey(draftKey);
                 if (manager.applyProfile(key, Minecraft.getInstance())) {
                     draftKey = key;
                     profileKeyBox.setValue(key);
-                    status = Component.translatable("screen.serverprofiles.status.applied", key);
+                    status = Component.translatable("screen.serverprofile.status.applied", key);
                     updateButtonState();
                 }
             }
@@ -86,8 +91,8 @@ public final class ServerProfilesScreen extends Screen {
                 if (enabled != null) {
                     status = Component.translatable(
                         enabled
-                            ? "screen.serverprofiles.status.enabled"
-                            : "screen.serverprofiles.status.disabled",
+                            ? "screen.serverprofile.status.enabled"
+                            : "screen.serverprofile.status.disabled",
                         manager.normalizeProfileKey(draftKey)
                     );
                 }
@@ -96,26 +101,26 @@ public final class ServerProfilesScreen extends Screen {
         ).bounds(x, 128, halfWidth, 20).build());
 
         addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.manage"),
-            button -> Minecraft.getInstance().setScreen(
-                new ProfilesListScreen(this, manager, manager.normalizeProfileKey(draftKey))
+            Component.translatable("screen.serverprofile.manage"),
+            button -> MinecraftCompat.setScreen(
+                new ProfileListScreen(this, manager, manager.normalizeProfileKey(draftKey))
             )
         ).bounds(x + halfWidth + 4, 128, halfWidth, 20).build());
 
         rulesButton = addRenderableWidget(Button.builder(
             Component.empty(),
-            button -> Minecraft.getInstance().setScreen(
+            button -> MinecraftCompat.setScreen(
                 new ProfileRulesScreen(this, manager, manager.normalizeProfileKey(draftKey))
             )
         ).bounds(x, 152, contentWidth, 20).build());
 
         Button restoreButton = addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.restore_previous"),
+            Component.translatable("screen.serverprofile.restore_previous"),
             button -> {
                 if (manager.restorePrevious(Minecraft.getInstance())) {
-                    status = Component.translatable("screen.serverprofiles.status.restored");
+                    status = Component.translatable("screen.serverprofile.status.restored");
                 } else {
-                    status = Component.translatable("screen.serverprofiles.status.no_backup");
+                    status = Component.translatable("screen.serverprofile.status.no_backup");
                 }
                 updateButtonState();
             }
@@ -124,8 +129,8 @@ public final class ServerProfilesScreen extends Screen {
 
         addRenderableWidget(Button.builder(
             manager.restoreOnDisconnect()
-                ? Component.translatable("screen.serverprofiles.restore_on_disconnect_on")
-                : Component.translatable("screen.serverprofiles.restore_on_disconnect_off"),
+                ? Component.translatable("screen.serverprofile.restore_on_disconnect_on")
+                : Component.translatable("screen.serverprofile.restore_on_disconnect_off"),
             button -> {
                 manager.toggleRestoreOnDisconnect();
                 rebuildWidgets();
@@ -133,7 +138,7 @@ public final class ServerProfilesScreen extends Screen {
         ).bounds(x + halfWidth + 4, 176, halfWidth, 20).build());
 
         addRenderableWidget(Button.builder(
-            Component.translatable("screen.serverprofiles.done"),
+            Component.translatable("screen.serverprofile.done"),
             button -> onClose()
         ).bounds(x, 200, contentWidth, 20).build());
 
@@ -148,13 +153,13 @@ public final class ServerProfilesScreen extends Screen {
     private void saveCurrentSettings() {
         String savedKey = manager.saveCurrentProfile(draftKey, Minecraft.getInstance());
         if (savedKey == null) {
-            status = Component.translatable("screen.serverprofiles.status.invalid_key");
+            status = Component.translatable("screen.serverprofile.status.invalid_key");
             return;
         }
 
         draftKey = savedKey;
         profileKeyBox.setValue(savedKey);
-        status = Component.translatable("screen.serverprofiles.status.saved", savedKey);
+        status = Component.translatable("screen.serverprofile.status.saved", savedKey);
         updateButtonState();
     }
 
@@ -172,19 +177,19 @@ public final class ServerProfilesScreen extends Screen {
         rulesButton.active = profile != null;
 
         if (profile == null) {
-            enabledButton.setMessage(Component.translatable("screen.serverprofiles.profile_missing"));
-            rulesButton.setMessage(Component.translatable("screen.serverprofiles.managed_settings_unavailable"));
+            enabledButton.setMessage(Component.translatable("screen.serverprofile.profile_missing"));
+            rulesButton.setMessage(Component.translatable("screen.serverprofile.managed_settings_unavailable"));
         } else {
             profile.normalize();
 
             enabledButton.setMessage(Component.translatable(
                 profile.enabled
-                    ? "screen.serverprofiles.profile_enabled"
-                    : "screen.serverprofiles.profile_disabled"
+                    ? "screen.serverprofile.profile_enabled"
+                    : "screen.serverprofile.profile_disabled"
             ));
 
             rulesButton.setMessage(Component.translatable(
-                "screen.serverprofiles.managed_settings",
+                "screen.serverprofile.managed_settings",
                 profile.rules.enabledCount(),
                 ProfileRules.Setting.values().length
             ));
@@ -192,20 +197,27 @@ public final class ServerProfilesScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {
+    //? if >=26.1 {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float deltaTicks) {
+        super.extractRenderState(graphics, mouseX, mouseY, deltaTicks);
+    //?} else
+    /*public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {*/
+        //? if <26.1 {
         //? if >=1.20.2 {
-        renderBackground(graphics, mouseX, mouseY, deltaTicks);
+        /*renderBackground(graphics, mouseX, mouseY, deltaTicks);*/
         //?} else
         /*renderBackground(graphics);*/
+        //?}
 
-        graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
+        ScreenGraphics.centered(graphics, font, title, width / 2, 18, 0xFFFFFF);
 
         Component targetText = target == null
-            ? Component.translatable("screen.serverprofiles.not_connected")
+            ? Component.translatable("screen.serverprofile.not_connected")
             : Component.literal(target);
-        graphics.drawCenteredString(
+        ScreenGraphics.centered(
+            graphics,
             font,
-            Component.translatable("screen.serverprofiles.target", targetText),
+            Component.translatable("screen.serverprofile.target", targetText),
             width / 2,
             38,
             0xC0C0C0
@@ -213,13 +225,14 @@ public final class ServerProfilesScreen extends Screen {
 
         ProfileManager.Match match = manager.findMatch(target);
         Component matchText = match == null
-            ? Component.translatable("screen.serverprofiles.no_profile")
-            : Component.translatable("screen.serverprofiles.matched", match.key());
-        graphics.drawCenteredString(font, matchText, width / 2, 52, 0xA0A0A0);
+            ? Component.translatable("screen.serverprofile.no_profile")
+            : Component.translatable("screen.serverprofile.matched", match.key());
+        ScreenGraphics.centered(graphics, font, matchText, width / 2, 52, 0xA0A0A0);
 
-        graphics.drawString(
+        ScreenGraphics.text(
+            graphics,
             font,
-            Component.translatable("screen.serverprofiles.profile_key"),
+            Component.translatable("screen.serverprofile.profile_key"),
             width / 2 - Math.min(300, width - 40) / 2,
             66,
             0xA0A0A0
@@ -229,10 +242,11 @@ public final class ServerProfilesScreen extends Screen {
         if (height >= 300 && profile != null && profile.settings != null) {
             SettingsSnapshot settings = profile.settings;
 
-            graphics.drawCenteredString(
+            ScreenGraphics.centered(
+                graphics,
                 font,
                 Component.translatable(
-                    "screen.serverprofiles.summary.primary",
+                    "screen.serverprofile.summary.primary",
                     settings.fov,
                     Math.round(settings.sensitivity * 200.0),
                     settings.renderDistance,
@@ -246,20 +260,21 @@ public final class ServerProfilesScreen extends Screen {
             Object fps = settings.framerateLimit == null
                 ? "-"
                 : settings.framerateLimit >= 260
-                    ? Component.translatable("screen.serverprofiles.value.unlimited")
+                    ? Component.translatable("screen.serverprofile.value.unlimited")
                     : settings.framerateLimit;
             Object vsync = settings.vsync == null
                 ? "-"
                 : Component.translatable(
                     settings.vsync
-                        ? "screen.serverprofiles.value.on"
-                        : "screen.serverprofiles.value.off"
+                        ? "screen.serverprofile.value.on"
+                        : "screen.serverprofile.value.off"
                 );
 
-            graphics.drawCenteredString(
+            ScreenGraphics.centered(
+                graphics,
                 font,
                 Component.translatable(
-                    "screen.serverprofiles.summary.performance",
+                    "screen.serverprofile.summary.performance",
                     settings.particles == null ? "-" : settings.particles.name(),
                     Math.round(settings.masterVolume * 100.0),
                     fps,
@@ -280,13 +295,14 @@ public final class ServerProfilesScreen extends Screen {
                 ? "-"
                 : Math.round(settings.gamma * 100.0);
             Object guiScale = settings.guiScale == 0
-                ? Component.translatable("screen.serverprofiles.value.auto")
+                ? Component.translatable("screen.serverprofile.value.auto")
                 : settings.guiScale;
 
-            graphics.drawCenteredString(
+            ScreenGraphics.centered(
+                graphics,
                 font,
                 Component.translatable(
-                    "screen.serverprofiles.summary.visual",
+                    "screen.serverprofile.summary.visual",
                     entityDistance,
                     fovEffects,
                     brightness,
@@ -299,14 +315,15 @@ public final class ServerProfilesScreen extends Screen {
         }
 
         if (!status.getString().isEmpty()) {
-            graphics.drawCenteredString(font, status, width / 2, height - 16, 0xFFFFFF);
+            ScreenGraphics.centered(graphics, font, status, width / 2, height - 16, 0xFFFFFF);
         }
 
-        super.render(graphics, mouseX, mouseY, deltaTicks);
+        //? if <26.1
+        /*super.render(graphics, mouseX, mouseY, deltaTicks);*/
     }
 
     @Override
     public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
+        MinecraftCompat.setScreen(parent);
     }
 }

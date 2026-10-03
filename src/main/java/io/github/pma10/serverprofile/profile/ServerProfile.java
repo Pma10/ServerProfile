@@ -1,4 +1,4 @@
-package io.github.pma10.serverprofiles.profile;
+package io.github.pma10.serverprofile.profile;
 
 public final class ServerProfile {
     public boolean enabled = true;

@@ -1,6 +1,25 @@
 # Changelog
 
-All notable changes to Server Profiles are documented here.
+All notable changes to ServerProfile are documented here.
+
+## 0.5.0-beta.1 - 2026-10-03
+
+### Added
+
+- Minecraft 26.1.x, 26.2, and 26.3 build targets.
+- Unobfuscated Fabric Loom pipeline for Minecraft 26.1+.
+- Java 25 target configuration for the 26.x line.
+- Automatic migration from the legacy `serverprofiles.json` config.
+
+### Changed
+
+- Renamed the project and user-facing mod from Server Profiles to ServerProfile.
+- Changed the primary mod ID from `serverprofiles` to `serverprofile`, while providing the legacy ID.
+- Changed the Java package root to `io.github.pma10.serverprofile`.
+- Changed resource namespace and translation keys to `serverprofile`.
+- Changed release artifact names to `server-profile-<version>+<minecraft>.jar`.
+- Expanded CI and release matrices from 19 to 22 build targets.
+
 
 ## 0.4.0-beta.1 - 2026-10-03
 

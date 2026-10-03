@@ -1,8 +1,8 @@
-package io.github.pma10.serverprofiles.config;
+package io.github.pma10.serverprofile.config;
 
-import io.github.pma10.serverprofiles.profile.ProfileRules;
-import io.github.pma10.serverprofiles.profile.ServerProfile;
-import io.github.pma10.serverprofiles.profile.SettingsSnapshot;
+import io.github.pma10.serverprofile.profile.ProfileRules;
+import io.github.pma10.serverprofile.profile.ServerProfile;
+import io.github.pma10.serverprofile.profile.SettingsSnapshot;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

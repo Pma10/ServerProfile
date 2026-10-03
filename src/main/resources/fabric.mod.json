@@ -1,22 +1,23 @@
 {
   "schemaVersion": 1,
-  "id": "serverprofiles",
+  "id": "serverprofile",
+  "provides": ["serverprofiles"],
   "version": "${version}",
-  "name": "Server Profiles",
+  "name": "ServerProfile",
   "description": "Automatically switches selected Minecraft client settings for each server.",
   "authors": ["Pma"],
   "contact": {
-    "issues": "https://github.com/Pma10/ServerProfiles/issues",
-    "sources": "https://github.com/Pma10/ServerProfiles"
+    "issues": "https://github.com/Pma10/ServerProfile/issues",
+    "sources": "https://github.com/Pma10/ServerProfile"
   },
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
     "client": [
-      "io.github.pma10.serverprofiles.client.ServerProfilesClient"
+      "io.github.pma10.serverprofile.client.ServerProfileClient"
     ],
     "modmenu": [
-      "io.github.pma10.serverprofiles.integration.modmenu.ModMenuIntegration"
+      "io.github.pma10.serverprofile.integration.modmenu.ModMenuIntegration"
     ]
   },
   "depends": {

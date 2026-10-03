@@ -32,15 +32,16 @@ jobs:
           - '1.21.9'
           - '1.21.10'
           - '1.21.11'
+          - '26.1'
+          - '26.2'
+          - '26.3'
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.7.1'
@@ -51,9 +52,9 @@ jobs:
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: server-profiles-mc${{ matrix.minecraft }}
+          name: server-profile-mc${{ matrix.minecraft }}
           path: |
-            versions/${{ matrix.minecraft }}/build/libs/server-profiles-*.jar
+            versions/${{ matrix.minecraft }}/build/libs/server-profile-*.jar
             !versions/${{ matrix.minecraft }}/build/libs/*-sources.jar
             !versions/${{ matrix.minecraft }}/build/libs/*-dev.jar
           if-no-files-found: error

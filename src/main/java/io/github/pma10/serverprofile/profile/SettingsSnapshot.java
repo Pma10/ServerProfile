@@ -1,4 +1,4 @@
-package io.github.pma10.serverprofiles.profile;
+package io.github.pma10.serverprofile.profile;
 
 import net.minecraft.client.Options;
 //? if >=1.21.2 {

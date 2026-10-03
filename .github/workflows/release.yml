@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (for example: 0.4.0-beta.1)'
+        description: 'Release version (for example: 0.5.0-beta.1)'
         required: true
         type: string
   push:
@@ -41,15 +41,16 @@ jobs:
           - '1.21.9'
           - '1.21.10'
           - '1.21.11'
+          - '26.1'
+          - '26.2'
+          - '26.3'
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
-
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.7.1'
@@ -64,12 +65,10 @@ jobs:
           else
             VERSION="$(sed -n 's/^mod_version=//p' gradle.properties)"
           fi
-
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
             echo "Invalid release version: $VERSION"
             exit 1
           fi
-
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build
@@ -80,7 +79,7 @@ jobs:
         with:
           name: release-mc${{ matrix.minecraft }}
           path: |
-            versions/${{ matrix.minecraft }}/build/libs/server-profiles-*.jar
+            versions/${{ matrix.minecraft }}/build/libs/server-profile-*.jar
             !versions/${{ matrix.minecraft }}/build/libs/*-sources.jar
             !versions/${{ matrix.minecraft }}/build/libs/*-dev.jar
           if-no-files-found: error
@@ -103,7 +102,6 @@ jobs:
           else
             VERSION="$(sed -n 's/^mod_version=//p' gradle.properties)"
           fi
-
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "TAG=v$VERSION" >> "$GITHUB_ENV"
 
@@ -139,5 +137,4 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then
             EXTRA_ARGS+=(--prerelease)
           fi
-
-          gh release create "$TAG"             release/*             --target "$GITHUB_SHA"             --title "Server Profiles $VERSION"             --generate-notes             "${EXTRA_ARGS[@]}"
+          gh release create "$TAG"             release/*             --target "$GITHUB_SHA"             --title "ServerProfile $VERSION"             --generate-notes             "${EXTRA_ARGS[@]}"

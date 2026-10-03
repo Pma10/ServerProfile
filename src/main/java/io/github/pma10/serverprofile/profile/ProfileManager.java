@@ -1,8 +1,8 @@
-package io.github.pma10.serverprofiles.profile;
+package io.github.pma10.serverprofile.profile;
 
 import com.google.gson.Gson;
-import io.github.pma10.serverprofiles.ServerProfiles;
-import io.github.pma10.serverprofiles.config.ProfileConfig;
+import io.github.pma10.serverprofile.ServerProfileMod;
+import io.github.pma10.serverprofile.config.ProfileConfig;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
@@ -25,7 +25,8 @@ import java.util.regex.Pattern;
 public final class ProfileManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    private final Path configPath = FabricLoader.getInstance().getConfigDir().resolve("serverprofiles.json");
+    private final Path configPath = FabricLoader.getInstance().getConfigDir().resolve("serverprofile.json");
+    private final Path legacyConfigPath = FabricLoader.getInstance().getConfigDir().resolve("serverprofiles.json");
 
     private ProfileConfig config;
     private SettingsSnapshot sessionBackup;
@@ -33,6 +34,7 @@ public final class ProfileManager {
 
     public ProfileManager() {
         config = load();
+        migrateLegacyConfig();
     }
 
     public void restoreCrashBackup(Minecraft client) {
@@ -45,14 +47,14 @@ public final class ProfileManager {
             config.recoveryBackup.apply(client.options, rules);
             persistOptions(client);
 
-            ServerProfiles.LOGGER.info("Restored client settings left behind by an interrupted Server Profiles session");
+            ServerProfileMod.LOGGER.info("Restored client settings left behind by an interrupted ServerProfile session");
 
             config.recoveryBackup = null;
             config.recoveryRules = null;
             config.recoveryProfile = null;
             save();
         } catch (RuntimeException exception) {
-            ServerProfiles.LOGGER.error("Failed to restore recovery settings; the recovery snapshot was kept", exception);
+            ServerProfileMod.LOGGER.error("Failed to restore recovery settings; the recovery snapshot was kept", exception);
         }
     }
 
@@ -293,7 +295,7 @@ public final class ProfileManager {
             clearSessionState();
             return true;
         } catch (RuntimeException exception) {
-            ServerProfiles.LOGGER.error("Failed to restore previous settings; the recovery snapshot was kept", exception);
+            ServerProfileMod.LOGGER.error("Failed to restore previous settings; the recovery snapshot was kept", exception);
             return false;
         }
     }
@@ -324,7 +326,7 @@ public final class ProfileManager {
         ProfileRules rules = match.profile().rules == null ? new ProfileRules() : match.profile().rules;
 
         if (rules.enabledCount() == 0) {
-            ServerProfiles.LOGGER.info("Profile '{}' matched '{}' but manages no settings", match.key(), currentTarget(client));
+            ServerProfileMod.LOGGER.info("Profile '{}' matched '{}' but manages no settings", match.key(), currentTarget(client));
             return;
         }
 
@@ -348,7 +350,7 @@ public final class ProfileManager {
         match.profile().settings.apply(client.options, rules);
         persistOptions(client);
 
-        ServerProfiles.LOGGER.info("{} Server Profiles profile '{}' for '{}'",
+        ServerProfileMod.LOGGER.info("{} ServerProfile profile '{}' for '{}'",
             automatic ? "Applied" : "Manually applied",
             match.key(),
             currentTarget(client));
@@ -361,7 +363,7 @@ public final class ProfileManager {
                 sessionBackup.apply(client.options, rules);
                 persistOptions(client);
             } catch (RuntimeException exception) {
-                ServerProfiles.LOGGER.error("Failed to restore settings on disconnect; recovery data was kept", exception);
+                ServerProfileMod.LOGGER.error("Failed to restore settings on disconnect; recovery data was kept", exception);
                 return;
             }
         }
@@ -387,11 +389,15 @@ public final class ProfileManager {
     }
 
     private ProfileConfig load() {
-        if (!Files.exists(configPath)) {
+        Path sourcePath = Files.exists(configPath)
+            ? configPath
+            : Files.exists(legacyConfigPath) ? legacyConfigPath : configPath;
+
+        if (!Files.exists(sourcePath)) {
             return new ProfileConfig();
         }
 
-        try (Reader reader = Files.newBufferedReader(configPath, StandardCharsets.UTF_8)) {
+        try (Reader reader = Files.newBufferedReader(sourcePath, StandardCharsets.UTF_8)) {
             ProfileConfig loaded = GSON.fromJson(reader, ProfileConfig.class);
             if (loaded == null) {
                 throw new IllegalStateException("Config file contained no JSON object");
@@ -408,7 +414,7 @@ public final class ProfileManager {
                     profile.normalize();
 
                     if (normalizedProfiles.put(key, profile) != null) {
-                        ServerProfiles.LOGGER.warn("Multiple profile keys normalized to '{}'; the last profile was kept", key);
+                        ServerProfileMod.LOGGER.warn("Multiple profile keys normalized to '{}'; the last profile was kept", key);
                     }
                 }
             }
@@ -417,26 +423,45 @@ public final class ProfileManager {
             loaded.version = Math.max(loaded.version, 3);
             return loaded;
         } catch (Exception exception) {
-            ServerProfiles.LOGGER.error("Failed to load {}; starting with a clean config", configPath, exception);
-            backupBrokenConfig();
+            ServerProfileMod.LOGGER.error("Failed to load {}; starting with a clean config", sourcePath, exception);
+            backupBrokenConfig(sourcePath);
             return new ProfileConfig();
         }
     }
 
-    private void backupBrokenConfig() {
-        if (!Files.exists(configPath)) {
+    private void migrateLegacyConfig() {
+        if (Files.exists(configPath) || !Files.exists(legacyConfigPath)) {
             return;
         }
 
-        Path backupPath = configPath.resolveSibling(
-            "serverprofiles.broken-" + System.currentTimeMillis() + ".json"
+        save();
+
+        try {
+            Files.deleteIfExists(legacyConfigPath);
+            ServerProfileMod.LOGGER.info("Migrated legacy ServerProfile config to {}", configPath);
+        } catch (Exception exception) {
+            ServerProfileMod.LOGGER.warn(
+                "Migrated ServerProfile config but could not remove legacy file {}",
+                legacyConfigPath,
+                exception
+            );
+        }
+    }
+
+    private void backupBrokenConfig(Path sourcePath) {
+        if (!Files.exists(sourcePath)) {
+            return;
+        }
+
+        Path backupPath = sourcePath.resolveSibling(
+            "serverprofile.broken-" + System.currentTimeMillis() + ".json"
         );
 
         try {
-            Files.move(configPath, backupPath, StandardCopyOption.REPLACE_EXISTING);
-            ServerProfiles.LOGGER.warn("Moved unreadable Server Profiles config to {}", backupPath);
+            Files.move(sourcePath, backupPath, StandardCopyOption.REPLACE_EXISTING);
+            ServerProfileMod.LOGGER.warn("Moved unreadable ServerProfile config to {}", backupPath);
         } catch (Exception backupException) {
-            ServerProfiles.LOGGER.error("Could not back up unreadable Server Profiles config", backupException);
+            ServerProfileMod.LOGGER.error("Could not back up unreadable ServerProfile config", backupException);
         }
     }
 
@@ -457,7 +482,7 @@ public final class ProfileManager {
                 Files.move(temporary, configPath, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (Exception exception) {
-            ServerProfiles.LOGGER.error("Failed to save {}", configPath, exception);
+            ServerProfileMod.LOGGER.error("Failed to save {}", configPath, exception);
         }
     }
 

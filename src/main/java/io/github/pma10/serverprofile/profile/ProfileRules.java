@@ -1,4 +1,4 @@
-package io.github.pma10.serverprofiles.profile;
+package io.github.pma10.serverprofile.profile;
 
 public final class ProfileRules {
     public boolean fov = true;
@@ -94,19 +94,19 @@ public final class ProfileRules {
     }
 
     public enum Setting {
-        FOV("screen.serverprofiles.setting.fov"),
-        SENSITIVITY("screen.serverprofiles.setting.sensitivity"),
-        RENDER_DISTANCE("screen.serverprofiles.setting.render_distance"),
-        SIMULATION_DISTANCE("screen.serverprofiles.setting.simulation_distance"),
-        PARTICLES("screen.serverprofiles.setting.particles"),
-        GUI_SCALE("screen.serverprofiles.setting.gui_scale"),
-        VIEW_BOBBING("screen.serverprofiles.setting.view_bobbing"),
-        MASTER_VOLUME("screen.serverprofiles.setting.master_volume"),
-        ENTITY_DISTANCE("screen.serverprofiles.setting.entity_distance"),
-        FRAMERATE_LIMIT("screen.serverprofiles.setting.framerate_limit"),
-        VSYNC("screen.serverprofiles.setting.vsync"),
-        FOV_EFFECTS("screen.serverprofiles.setting.fov_effects"),
-        BRIGHTNESS("screen.serverprofiles.setting.brightness");
+        FOV("screen.serverprofile.setting.fov"),
+        SENSITIVITY("screen.serverprofile.setting.sensitivity"),
+        RENDER_DISTANCE("screen.serverprofile.setting.render_distance"),
+        SIMULATION_DISTANCE("screen.serverprofile.setting.simulation_distance"),
+        PARTICLES("screen.serverprofile.setting.particles"),
+        GUI_SCALE("screen.serverprofile.setting.gui_scale"),
+        VIEW_BOBBING("screen.serverprofile.setting.view_bobbing"),
+        MASTER_VOLUME("screen.serverprofile.setting.master_volume"),
+        ENTITY_DISTANCE("screen.serverprofile.setting.entity_distance"),
+        FRAMERATE_LIMIT("screen.serverprofile.setting.framerate_limit"),
+        VSYNC("screen.serverprofile.setting.vsync"),
+        FOV_EFFECTS("screen.serverprofile.setting.fov_effects"),
+        BRIGHTNESS("screen.serverprofile.setting.brightness");
 
         private final String translationKey;
 

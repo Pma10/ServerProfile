@@ -2,7 +2,13 @@ plugins {
     id 'maven-publish'
 }
 
-apply plugin: 'net.fabricmc.fabric-loom-remap'
+def unobfuscatedMinecraft = project.findProperty('unobfuscated_minecraft')?.toString()?.toBoolean() ?: false
+
+if (unobfuscatedMinecraft) {
+    apply plugin: 'net.fabricmc.fabric-loom'
+} else {
+    apply plugin: 'net.fabricmc.fabric-loom-remap'
+}
 
 version = "${project.mod_version}+${project.minecraft_version}"
 group = project.maven_group
@@ -20,22 +26,31 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.officialMojangMappings()
 
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    if (unobfuscatedMinecraft) {
+        implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-    modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
-        transitive = false
+        compileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
+            transitive = false
+        }
+    } else {
+        mappings loom.officialMojangMappings()
+        modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+        modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
+            transitive = false
+        }
     }
 }
 
 processResources {
     def props = [
-        version          : version,
-        minecraft_dep    : project.minecraft_dep,
-        loader_version   : project.loader_version,
-        java_version     : project.java_version
+        version        : version,
+        minecraft_dep  : project.minecraft_dep,
+        loader_version : project.loader_version,
+        java_version   : project.java_version
     ]
 
     inputs.properties(props)
