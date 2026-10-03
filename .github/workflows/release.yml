@@ -1,16 +1,23 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (for example: 0.3.0-beta.1)'
+        required: true
+        type: string
   push:
-    tags:
-      - 'v*'
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,30 +30,65 @@ jobs:
         with:
           gradle-version: '9.7.1'
 
-      - name: Verify tag version
+      - name: Resolve release version
         shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PROJECT_VERSION="$(sed -n 's/^mod_version=//p' gradle.properties)"
-          if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
-            echo "Tag version $TAG_VERSION does not match gradle.properties version $PROJECT_VERSION"
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          else
+            VERSION="$(sed -n 's/^mod_version=//p' gradle.properties)"
+          fi
+
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $VERSION"
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TAG=v$VERSION" >> "$GITHUB_ENV"
+
+      - name: Ensure release does not already exist
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
             exit 1
           fi
 
       - name: Build release jar
-        run: gradle clean build --stacktrace
+        run: gradle clean build -Pmod_version="$VERSION" --stacktrace
 
       - name: Prepare release files
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          JAR="build/libs/server-profiles-${VERSION}.jar"
+          test -f "$JAR"
+
           mkdir -p release
-          cp "build/libs/server-profiles-${VERSION}.jar" release/
+          cp "$JAR" release/
+
           cd release
           sha256sum "server-profiles-${VERSION}.jar" > SHA256SUMS.txt
 
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-profiles-${{ env.VERSION }}
+          path: release/*
+          if-no-files-found: error
+
       - name: Create GitHub release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME"             release/*             --title "Server Profiles ${GITHUB_REF_NAME#v}"             --generate-notes
+          EXTRA_ARGS=()
+          if [[ "$VERSION" == *-* ]]; then
+            EXTRA_ARGS+=(--prerelease)
+          fi
+
+          gh release create "$TAG"             release/*             --target "$GITHUB_SHA"             --title "Server Profiles $VERSION"             --generate-notes             "${EXTRA_ARGS[@]}"

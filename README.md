@@ -117,14 +117,21 @@ gradle clean build
 
 The distributable JAR is written to `build/libs`.
 
-GitHub Actions also builds the JAR on every push to `main`. Pushing a tag matching the version in `gradle.properties`, for example:
+## Releasing
 
-```bash
-git tag v0.3.0-beta.1
-git push origin v0.3.0-beta.1
-```
+Releases are built entirely by GitHub Actions.
 
-creates a GitHub Release containing the remapped JAR and a SHA-256 checksum file.
+Open **Actions → Release → Run workflow**, enter a version such as `0.3.0-beta.1`, and run it. The workflow:
+
+1. Validates the version.
+2. Builds the mod with that version injected into `fabric.mod.json`.
+3. Creates the remapped distributable JAR.
+4. Generates `SHA256SUMS.txt`.
+5. Uploads the build as an Actions artifact.
+6. Creates the matching `v<version>` Git tag and GitHub Release.
+7. Marks versions containing a prerelease suffix such as `-beta.1` as prereleases.
+
+Maintainers can also release the version currently stored in `gradle.properties` by pushing a commit whose message contains `[release]`.
 
 ## Compatibility
 
