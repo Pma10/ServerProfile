@@ -14,6 +14,9 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -72,7 +75,7 @@ public final class ProfileManager {
         ServerData server = client.getCurrentServer();
 
         if (server != null && server.ip != null && !server.ip.isBlank()) {
-            return normalizeTarget(server.ip);
+            return normalizeProfileKey(server.ip);
         }
 
         if (client.hasSingleplayerServer()) {
@@ -82,29 +85,100 @@ public final class ProfileManager {
         return null;
     }
 
+    public String normalizeProfileKey(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+
+        if (normalized.startsWith("minecraft://")) {
+            normalized = normalized.substring("minecraft://".length());
+        }
+
+        int slash = normalized.indexOf('/');
+        if (slash >= 0) {
+            normalized = normalized.substring(0, slash);
+        }
+
+        while (normalized.endsWith(".")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
+        if (hasDefaultPort(normalized)) {
+            normalized = normalized.substring(0, normalized.length() - ":25565".length());
+        }
+
+        return normalized;
+    }
+
+    public boolean isValidProfileKey(String value) {
+        String normalized = normalizeProfileKey(value);
+
+        if (normalized.isBlank() || normalized.length() > 255) {
+            return false;
+        }
+
+        for (int i = 0; i < normalized.length(); i++) {
+            if (Character.isWhitespace(normalized.charAt(i))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public List<String> profileKeys() {
+        List<String> keys = new ArrayList<>(config.profiles.keySet());
+        keys.sort(String.CASE_INSENSITIVE_ORDER);
+        return keys;
+    }
+
+    public ServerProfile getProfile(String key) {
+        if (key == null) {
+            return null;
+        }
+
+        return config.profiles.get(normalizeProfileKey(key));
+    }
+
     public Match findMatch(String target) {
         if (target == null) {
             return null;
         }
 
-        ServerProfile exact = config.profiles.get(target);
+        String normalizedTarget = normalizeProfileKey(target);
+        String hostTarget = hostOnly(normalizedTarget);
+
+        ServerProfile exact = config.profiles.get(normalizedTarget);
         if (exact != null) {
-            return new Match(target, exact);
+            return new Match(normalizedTarget, exact);
+        }
+
+        if (!hostTarget.equals(normalizedTarget)) {
+            ServerProfile hostProfile = config.profiles.get(hostTarget);
+            if (hostProfile != null) {
+                return new Match(hostTarget, hostProfile);
+            }
         }
 
         Match best = null;
         int bestSpecificity = -1;
 
         for (Map.Entry<String, ServerProfile> entry : config.profiles.entrySet()) {
-            String pattern = normalizeTarget(entry.getKey());
+            String pattern = entry.getKey();
 
-            if (!containsWildcard(pattern) || !globMatches(pattern, target)) {
+            if (!containsWildcard(pattern)) {
+                continue;
+            }
+
+            if (!globMatches(pattern, normalizedTarget) && !globMatches(pattern, hostTarget)) {
                 continue;
             }
 
             int specificity = pattern.replace("*", "").replace("?", "").length();
             if (specificity > bestSpecificity) {
-                best = new Match(entry.getKey(), entry.getValue());
+                best = new Match(pattern, entry.getValue());
                 bestSpecificity = specificity;
             }
         }
@@ -112,38 +186,52 @@ public final class ProfileManager {
         return best;
     }
 
-    public boolean hasExactProfile(String target) {
-        return target != null && config.profiles.containsKey(target);
-    }
-
-    public void saveCurrentProfile(String target, Minecraft client) {
-        if (target == null) {
-            return;
+    public String saveCurrentProfile(String key, Minecraft client) {
+        String normalized = normalizeProfileKey(key);
+        if (!isValidProfileKey(normalized)) {
+            return null;
         }
 
-        ServerProfile profile = config.profiles.computeIfAbsent(target, key -> new ServerProfile());
+        ServerProfile profile = config.profiles.computeIfAbsent(normalized, ignored -> new ServerProfile());
         profile.settings = SettingsSnapshot.capture(client.options);
         save();
+        return normalized;
     }
 
-    public void deleteExactProfile(String target) {
-        if (target == null) {
-            return;
-        }
-
-        config.profiles.remove(target);
-        save();
-    }
-
-    public boolean toggleMatchedProfile(String target) {
-        Match match = findMatch(target);
-        if (match == null) {
+    public boolean deleteProfile(String key) {
+        String normalized = normalizeProfileKey(key);
+        if (normalized.isBlank()) {
             return false;
         }
 
-        match.profile().enabled = !match.profile().enabled;
+        boolean removed = config.profiles.remove(normalized) != null;
+        if (removed) {
+            save();
+        }
+        return removed;
+    }
+
+    public Boolean toggleProfile(String key) {
+        ServerProfile profile = getProfile(key);
+        if (profile == null) {
+            return null;
+        }
+
+        profile.enabled = !profile.enabled;
         save();
-        return match.profile().enabled;
+        return profile.enabled;
+    }
+
+    public boolean applyProfile(String key, Minecraft client) {
+        String normalized = normalizeProfileKey(key);
+        ServerProfile profile = config.profiles.get(normalized);
+
+        if (profile == null || profile.settings == null) {
+            return false;
+        }
+
+        applyMatch(client, new Match(normalized, profile), false);
+        return true;
     }
 
     public boolean applyMatchedProfile(String target, Minecraft client) {
@@ -247,7 +335,19 @@ public final class ProfileManager {
             if (loaded == null) {
                 loaded = new ProfileConfig();
             }
+
             loaded.normalize();
+
+            Map<String, ServerProfile> normalizedProfiles = new LinkedHashMap<>();
+            for (Map.Entry<String, ServerProfile> entry : loaded.profiles.entrySet()) {
+                String key = normalizeProfileKey(entry.getKey());
+                if (isValidProfileKey(key) && entry.getValue() != null) {
+                    normalizedProfiles.put(key, entry.getValue());
+                }
+            }
+
+            loaded.profiles = normalizedProfiles;
+            loaded.version = Math.max(loaded.version, 2);
             return loaded;
         } catch (Exception exception) {
             LOGGER.error("Failed to load {}", configPath, exception);
@@ -256,6 +356,8 @@ public final class ProfileManager {
     }
 
     private void save() {
+        config.version = 2;
+
         try {
             Files.createDirectories(configPath.getParent());
             Path temporary = configPath.resolveSibling(configPath.getFileName() + ".tmp");
@@ -274,8 +376,33 @@ public final class ProfileManager {
         }
     }
 
-    private static String normalizeTarget(String value) {
-        return value.trim().toLowerCase(Locale.ROOT);
+    private static boolean hasDefaultPort(String value) {
+        if (!value.endsWith(":25565")) {
+            return false;
+        }
+
+        if (value.startsWith("[")) {
+            int closingBracket = value.indexOf(']');
+            return closingBracket >= 0 && closingBracket == value.length() - ":25565".length() - 1;
+        }
+
+        return value.indexOf(':') == value.lastIndexOf(':');
+    }
+
+    private static String hostOnly(String value) {
+        if (value.startsWith("[")) {
+            int closingBracket = value.indexOf(']');
+            if (closingBracket >= 0) {
+                return value.substring(0, closingBracket + 1);
+            }
+        }
+
+        int firstColon = value.indexOf(':');
+        if (firstColon > 0 && firstColon == value.lastIndexOf(':')) {
+            return value.substring(0, firstColon);
+        }
+
+        return value;
     }
 
     private static boolean containsWildcard(String value) {

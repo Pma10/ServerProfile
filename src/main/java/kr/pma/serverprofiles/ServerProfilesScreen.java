@@ -3,6 +3,7 @@ package kr.pma.serverprofiles;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -11,7 +12,13 @@ public final class ServerProfilesScreen extends Screen {
     private final ProfileManager manager;
 
     private String target;
+    private String draftKey;
     private Component status = Component.empty();
+
+    private EditBox profileKeyBox;
+    private Button saveButton;
+    private Button applyButton;
+    private Button enabledButton;
 
     public ServerProfilesScreen(Screen parent, ProfileManager manager) {
         super(Component.translatable("screen.serverprofiles.title"));
@@ -24,68 +31,73 @@ public final class ServerProfilesScreen extends Screen {
         target = manager.currentTarget(Minecraft.getInstance());
         ProfileManager.Match match = manager.findMatch(target);
 
-        int buttonWidth = 200;
-        int x = width / 2 - buttonWidth / 2;
-        int y = 82;
+        if (draftKey == null) {
+            draftKey = match != null ? match.key() : target != null ? target : "";
+        }
 
-        Button saveButton = Button.builder(
-            Component.translatable("screen.serverprofiles.save"),
+        int contentWidth = Math.min(300, width - 40);
+        int x = width / 2 - contentWidth / 2;
+
+        profileKeyBox = new EditBox(
+            font,
+            x,
+            78,
+            contentWidth,
+            20,
+            Component.translatable("screen.serverprofiles.profile_key")
+        );
+        profileKeyBox.setMaxLength(255);
+        profileKeyBox.setValue(draftKey);
+        profileKeyBox.setResponder(value -> {
+            draftKey = value;
+            updateButtonState();
+        });
+        addRenderableWidget(profileKeyBox);
+
+        int halfWidth = (contentWidth - 4) / 2;
+
+        saveButton = addRenderableWidget(Button.builder(
+            Component.translatable("screen.serverprofiles.save_as"),
+            button -> saveCurrentSettings()
+        ).bounds(x, 104, halfWidth, 20).build());
+
+        applyButton = addRenderableWidget(Button.builder(
+            Component.translatable("screen.serverprofiles.apply_selected"),
             button -> {
-                manager.saveCurrentProfile(target, Minecraft.getInstance());
-                status = Component.translatable("screen.serverprofiles.status.saved", target);
-                rebuildWidgets();
-            }
-        ).bounds(x, y, buttonWidth, 20).build();
-        saveButton.active = target != null;
-        addRenderableWidget(saveButton);
-
-        y += 24;
-
-        Button applyButton = Button.builder(
-            Component.translatable("screen.serverprofiles.apply"),
-            button -> {
-                ProfileManager.Match current = manager.findMatch(target);
-                if (current != null && manager.applyMatchedProfile(target, Minecraft.getInstance())) {
-                    status = Component.translatable("screen.serverprofiles.status.applied", current.key());
-                    rebuildWidgets();
+                String key = manager.normalizeProfileKey(draftKey);
+                if (manager.applyProfile(key, Minecraft.getInstance())) {
+                    draftKey = key;
+                    profileKeyBox.setValue(key);
+                    status = Component.translatable("screen.serverprofiles.status.applied", key);
+                    updateButtonState();
                 }
             }
-        ).bounds(x, y, buttonWidth, 20).build();
-        applyButton.active = match != null && match.profile().settings != null;
-        addRenderableWidget(applyButton);
+        ).bounds(x + halfWidth + 4, 104, halfWidth, 20).build());
 
-        y += 24;
-
-        Component enabledLabel = match == null || match.profile().enabled
-            ? Component.translatable("screen.serverprofiles.profile_enabled")
-            : Component.translatable("screen.serverprofiles.profile_disabled");
-
-        Button enabledButton = Button.builder(
-            enabledLabel,
+        enabledButton = addRenderableWidget(Button.builder(
+            Component.empty(),
             button -> {
-                manager.toggleMatchedProfile(target);
-                rebuildWidgets();
+                Boolean enabled = manager.toggleProfile(draftKey);
+                if (enabled != null) {
+                    status = Component.translatable(
+                        enabled
+                            ? "screen.serverprofiles.status.enabled"
+                            : "screen.serverprofiles.status.disabled",
+                        manager.normalizeProfileKey(draftKey)
+                    );
+                }
+                updateButtonState();
             }
-        ).bounds(x, y, buttonWidth, 20).build();
-        enabledButton.active = match != null;
-        addRenderableWidget(enabledButton);
+        ).bounds(x, 128, halfWidth, 20).build());
 
-        y += 24;
+        addRenderableWidget(Button.builder(
+            Component.translatable("screen.serverprofiles.manage"),
+            button -> Minecraft.getInstance().setScreen(
+                new ProfilesListScreen(this, manager, manager.normalizeProfileKey(draftKey))
+            )
+        ).bounds(x + halfWidth + 4, 128, halfWidth, 20).build());
 
-        Button deleteButton = Button.builder(
-            Component.translatable("screen.serverprofiles.delete"),
-            button -> {
-                manager.deleteExactProfile(target);
-                status = Component.translatable("screen.serverprofiles.status.deleted", target);
-                rebuildWidgets();
-            }
-        ).bounds(x, y, buttonWidth, 20).build();
-        deleteButton.active = manager.hasExactProfile(target);
-        addRenderableWidget(deleteButton);
-
-        y += 30;
-
-        Button restoreButton = Button.builder(
+        Button restoreButton = addRenderableWidget(Button.builder(
             Component.translatable("screen.serverprofiles.restore_previous"),
             button -> {
                 if (manager.restorePrevious(Minecraft.getInstance())) {
@@ -93,39 +105,73 @@ public final class ServerProfilesScreen extends Screen {
                 } else {
                     status = Component.translatable("screen.serverprofiles.status.no_backup");
                 }
-                rebuildWidgets();
+                updateButtonState();
             }
-        ).bounds(x, y, buttonWidth, 20).build();
+        ).bounds(x, 152, halfWidth, 20).build());
         restoreButton.active = manager.hasSessionBackup();
-        addRenderableWidget(restoreButton);
-
-        y += 24;
-
-        Component restoreLabel = manager.restoreOnDisconnect()
-            ? Component.translatable("screen.serverprofiles.restore_on_disconnect_on")
-            : Component.translatable("screen.serverprofiles.restore_on_disconnect_off");
 
         addRenderableWidget(Button.builder(
-            restoreLabel,
+            manager.restoreOnDisconnect()
+                ? Component.translatable("screen.serverprofiles.restore_on_disconnect_on")
+                : Component.translatable("screen.serverprofiles.restore_on_disconnect_off"),
             button -> {
                 manager.toggleRestoreOnDisconnect();
                 rebuildWidgets();
             }
-        ).bounds(x, y, buttonWidth, 20).build());
-
-        y += 30;
+        ).bounds(x + halfWidth + 4, 152, halfWidth, 20).build());
 
         addRenderableWidget(Button.builder(
             Component.translatable("screen.serverprofiles.done"),
             button -> onClose()
-        ).bounds(x, y, buttonWidth, 20).build());
+        ).bounds(x, 176, contentWidth, 20).build());
+
+        updateButtonState();
+    }
+
+    public void selectProfile(String key) {
+        draftKey = key;
+        status = Component.empty();
+    }
+
+    private void saveCurrentSettings() {
+        String savedKey = manager.saveCurrentProfile(draftKey, Minecraft.getInstance());
+        if (savedKey == null) {
+            status = Component.translatable("screen.serverprofiles.status.invalid_key");
+            return;
+        }
+
+        draftKey = savedKey;
+        profileKeyBox.setValue(savedKey);
+        status = Component.translatable("screen.serverprofiles.status.saved", savedKey);
+        updateButtonState();
+    }
+
+    private void updateButtonState() {
+        if (saveButton == null || applyButton == null || enabledButton == null) {
+            return;
+        }
+
+        boolean valid = manager.isValidProfileKey(draftKey);
+        ServerProfile profile = valid ? manager.getProfile(draftKey) : null;
+
+        saveButton.active = valid;
+        applyButton.active = target != null && profile != null && profile.settings != null;
+        enabledButton.active = profile != null;
+
+        if (profile == null) {
+            enabledButton.setMessage(Component.translatable("screen.serverprofiles.profile_missing"));
+        } else if (profile.enabled) {
+            enabledButton.setMessage(Component.translatable("screen.serverprofiles.profile_enabled"));
+        } else {
+            enabledButton.setMessage(Component.translatable("screen.serverprofiles.profile_disabled"));
+        }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {
         renderBackground(graphics, mouseX, mouseY, deltaTicks);
 
-        graphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFF);
+        graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
 
         Component targetText = target == null
             ? Component.translatable("screen.serverprofiles.not_connected")
@@ -134,18 +180,100 @@ public final class ServerProfilesScreen extends Screen {
             font,
             Component.translatable("screen.serverprofiles.target", targetText),
             width / 2,
-            44,
+            38,
             0xC0C0C0
         );
 
         ProfileManager.Match match = manager.findMatch(target);
-        Component profileText = match == null
+        Component matchText = match == null
             ? Component.translatable("screen.serverprofiles.no_profile")
             : Component.translatable("screen.serverprofiles.matched", match.key());
-        graphics.drawCenteredString(font, profileText, width / 2, 58, 0xA0A0A0);
+        graphics.drawCenteredString(font, matchText, width / 2, 52, 0xA0A0A0);
+
+        graphics.drawString(
+            font,
+            Component.translatable("screen.serverprofiles.profile_key"),
+            width / 2 - Math.min(300, width - 40) / 2,
+            66,
+            0xA0A0A0
+        );
+
+        ServerProfile profile = manager.getProfile(draftKey);
+        if (height >= 260 && profile != null && profile.settings != null) {
+            SettingsSnapshot settings = profile.settings;
+            graphics.drawCenteredString(
+                font,
+                Component.translatable(
+                    "screen.serverprofiles.summary.primary",
+                    settings.fov,
+                    Math.round(settings.sensitivity * 200.0),
+                    settings.renderDistance,
+                    settings.simulationDistance
+                ),
+                width / 2,
+                208,
+                0xB8B8B8
+            );
+
+            Object fps = settings.framerateLimit == null
+                ? "-"
+                : settings.framerateLimit >= 260
+                    ? Component.translatable("screen.serverprofiles.value.unlimited")
+                    : settings.framerateLimit;
+            Object vsync = settings.vsync == null
+                ? "-"
+                : Component.translatable(
+                    settings.vsync
+                        ? "screen.serverprofiles.value.on"
+                        : "screen.serverprofiles.value.off"
+                );
+
+            graphics.drawCenteredString(
+                font,
+                Component.translatable(
+                    "screen.serverprofiles.summary.performance",
+                    settings.particles == null ? "-" : settings.particles.name(),
+                    Math.round(settings.masterVolume * 100.0),
+                    fps,
+                    vsync
+                ),
+                width / 2,
+                222,
+                0x969696
+            );
+
+            if (height >= 278) {
+                Object entityDistance = settings.entityDistanceScaling == null
+                    ? "-"
+                    : Math.round(settings.entityDistanceScaling * 100.0);
+                Object fovEffects = settings.fovEffectScale == null
+                    ? "-"
+                    : Math.round(settings.fovEffectScale * 100.0);
+                Object brightness = settings.gamma == null
+                    ? "-"
+                    : Math.round(settings.gamma * 100.0);
+                Object guiScale = settings.guiScale == 0
+                    ? Component.translatable("screen.serverprofiles.value.auto")
+                    : settings.guiScale;
+
+                graphics.drawCenteredString(
+                    font,
+                    Component.translatable(
+                        "screen.serverprofiles.summary.visual",
+                        entityDistance,
+                        fovEffects,
+                        brightness,
+                        guiScale
+                    ),
+                    width / 2,
+                    236,
+                    0x808080
+                );
+            }
+        }
 
         if (!status.getString().isEmpty()) {
-            graphics.drawCenteredString(font, status, width / 2, height - 32, 0xFFFFFF);
+            graphics.drawCenteredString(font, status, width / 2, height - 16, 0xFFFFFF);
         }
 
         super.render(graphics, mouseX, mouseY, deltaTicks);

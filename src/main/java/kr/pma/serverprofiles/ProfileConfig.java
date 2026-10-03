@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class ProfileConfig {
-    public int version = 1;
+    public int version = 2;
     public boolean restoreOnDisconnect = true;
     public Map<String, ServerProfile> profiles = new LinkedHashMap<>();
     public SettingsSnapshot recoveryBackup;
