@@ -1,4 +1,4 @@
-package kr.pma.serverprofiles;
+package io.github.pma10.serverprofiles;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

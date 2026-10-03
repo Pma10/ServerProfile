@@ -2,6 +2,11 @@
 
 All notable changes to Server Profiles are documented here.
 
+## 0.3.0-beta.2 - 2026-10-03
+
+- Changed the Java package root from `kr.pma` to `io.github.pma10`.
+- Changed the Gradle Maven group to `io.github.pma10`.
+
 ## 0.3.0-beta.1 - 2026-10-03
 
 Public beta preparation.

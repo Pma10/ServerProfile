@@ -1,4 +1,4 @@
-package kr.pma.serverprofiles;
+package io.github.pma10.serverprofiles;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;

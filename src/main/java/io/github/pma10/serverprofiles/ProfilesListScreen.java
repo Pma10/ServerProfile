@@ -1,4 +1,4 @@
-package kr.pma.serverprofiles;
+package io.github.pma10.serverprofiles;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;

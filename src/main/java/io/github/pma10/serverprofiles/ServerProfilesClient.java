@@ -1,4 +1,4 @@
-package kr.pma.serverprofiles;
+package io.github.pma10.serverprofiles;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;

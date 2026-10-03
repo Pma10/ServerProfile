@@ -1,4 +1,4 @@
-package kr.pma.serverprofiles;
+package io.github.pma10.serverprofiles;
 
 public final class ProfileRules {
     public boolean fov = true;

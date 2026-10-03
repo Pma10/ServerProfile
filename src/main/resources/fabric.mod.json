@@ -13,10 +13,10 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "kr.pma.serverprofiles.ServerProfilesClient"
+      "io.github.pma10.serverprofiles.ServerProfilesClient"
     ],
     "modmenu": [
-      "kr.pma.serverprofiles.ModMenuIntegration"
+      "io.github.pma10.serverprofiles.ModMenuIntegration"
     ]
   },
   "depends": {
