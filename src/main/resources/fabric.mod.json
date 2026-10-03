@@ -20,6 +20,12 @@
       "io.github.pma10.serverprofile.integration.modmenu.ModMenuIntegration"
     ]
   },
+  "mixins": [
+    {
+      "config": "serverprofile.client.mixins.json",
+      "environment": "client"
+    }
+  ],
   "depends": {
     "fabricloader": ">=${loader_min_version}",
     "minecraft": "${minecraft_dep}",

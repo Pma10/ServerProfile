@@ -1,0 +1,88 @@
+name: Modrinth Description
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - .github/workflows/modrinth-description.yml
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Modrinth configuration
+        id: modrinth
+        shell: bash
+        env:
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+        run: |
+          if [ -z "$MODRINTH_PROJECT_ID" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "MODRINTH_PROJECT_ID is not configured; skipping description sync."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify Modrinth token
+        if: steps.modrinth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: |
+          if [ -z "$MODRINTH_TOKEN" ]; then
+            echo "MODRINTH_TOKEN is not configured."
+            exit 1
+          fi
+
+      - name: Extract Modrinth description from README
+        if: steps.modrinth.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          awk '
+            /<!-- modrinth:start -->/ { printing=1; next }
+            /<!-- modrinth:end -->/   { exit }
+            printing { print }
+          ' README.md > modrinth-description.md
+
+          if [ ! -s modrinth-description.md ]; then
+            echo "README.md does not contain a non-empty Modrinth description block."
+            exit 1
+          fi
+
+      - name: Create Modrinth API payload
+        if: steps.modrinth.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          jq -Rs '{body: .}' modrinth-description.md > modrinth-project.json
+
+      - name: Sync description
+        if: steps.modrinth.outputs.enabled == 'true'
+        shell: bash
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+        run: |
+          STATUS="$(
+            curl --silent --show-error \
+              --output modrinth-response.json \
+              --write-out '%{http_code}' \
+              --request PATCH \
+              --header "Authorization: $MODRINTH_TOKEN" \
+              --header "Content-Type: application/json" \
+              --header "User-Agent: Pma10/ServerProfile-GitHubActions/$GITHUB_SHA" \
+              --data-binary @modrinth-project.json \
+              "https://api.modrinth.com/v2/project/$MODRINTH_PROJECT_ID"
+          )"
+
+          if [ "$STATUS" != "204" ]; then
+            echo "Modrinth description update failed with HTTP $STATUS"
+            cat modrinth-response.json
+            exit 1
+          fi
+
+          echo "README.md Modrinth section synced successfully."

@@ -14,6 +14,8 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 /*import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;*/
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.KeyMapping;
+//? if <1.21.9
+/*import net.minecraft.client.gui.screens.Screen;*/
 //? if >=1.21.9 {
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
@@ -78,7 +80,12 @@ public final class ServerProfileClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openScreen.consumeClick()) {
-                if (MinecraftCompat.currentScreen(client) == null) {
+                //? if >=1.21.9 {
+                boolean controlDown = client.hasControlDown();
+                //?} else
+                /*boolean controlDown = Screen.hasControlDown();*/
+
+                if (controlDown && MinecraftCompat.currentScreen(client) == null) {
                     MinecraftCompat.setScreen(new ServerProfileScreen(null, PROFILE_MANAGER));
                 }
             }

@@ -2,6 +2,14 @@
 
 All notable changes to ServerProfile are documented here.
 
+## 0.5.0-beta.3 - 2026-10-04
+
+### Added
+
+- Added a native **ServerProfile** button directly to Minecraft's Options screen.
+- The button opens the same profile manager used by the Ctrl + O shortcut and Mod Menu integration.
+- Changed the in-game shortcut from O to Ctrl + O to avoid accidental activation while typing or playing.
+
 ## 0.5.0-beta.2 - 2026-10-04
 
 ### Fixed
