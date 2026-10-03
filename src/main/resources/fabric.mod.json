@@ -13,16 +13,16 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "io.github.pma10.serverprofiles.ServerProfilesClient"
+      "io.github.pma10.serverprofiles.client.ServerProfilesClient"
     ],
     "modmenu": [
-      "io.github.pma10.serverprofiles.ModMenuIntegration"
+      "io.github.pma10.serverprofiles.integration.modmenu.ModMenuIntegration"
     ]
   },
   "depends": {
-    "fabricloader": ">=0.19.5",
-    "minecraft": "~1.21.11",
-    "java": ">=21",
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_dep}",
+    "java": ">=${java_version}",
     "fabric-api": "*"
   },
   "suggests": {

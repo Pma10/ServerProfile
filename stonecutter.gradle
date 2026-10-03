@@ -1,0 +1,14 @@
+plugins {
+    id 'dev.kikugie.stonecutter'
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
+}
+
+stonecutter.active '1.21.11' /* [SC] DO NOT EDIT */
+
+def supportedVersions = stonecutter.versions*.project
+
+tasks.register('buildAll') {
+    group = 'build'
+    description = 'Builds every supported Minecraft version.'
+    dependsOn(supportedVersions.collect { ":${it}:build" })
+}

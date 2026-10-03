@@ -1,8 +1,10 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'maven-publish'
 }
 
-version = project.mod_version
+apply plugin: 'net.fabricmc.fabric-loom-remap'
+
+version = "${project.mod_version}+${project.minecraft_version}"
 group = project.maven_group
 
 base {
@@ -11,48 +13,66 @@ base {
 
 repositories {
     maven {
-        name = 'Modrinth'
-        url = 'https://api.modrinth.com/maven'
-        content {
-            includeGroup 'maven.modrinth'
-        }
+        name = 'Terraformers'
+        url = 'https://maven.terraformersmc.com/releases/'
     }
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
+
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-    // Optional integration. Mod Menu is not required at runtime.
-    modCompileOnly "maven.modrinth:mOgUt4GM:${project.modmenu_version}"
+    modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") {
+        transitive = false
+    }
 }
 
 processResources {
-    def version = project.version
-    inputs.property "version", version
+    def props = [
+        version          : version,
+        minecraft_dep    : project.minecraft_dep,
+        loader_version   : project.loader_version,
+        java_version     : project.java_version
+    ]
 
-    filesMatching("fabric.mod.json") {
-        expand "version": version
+    inputs.properties(props)
+
+    filesMatching('fabric.mod.json') {
+        expand(props)
+    }
+}
+
+def targetJava = (project.java_version as int)
+
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(targetJava)
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
-}
-
-java {
-    withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    options.release = targetJava
+    options.encoding = 'UTF-8'
 }
 
 jar {
-    def projectName = project.name
-    inputs.property "projectName", projectName
+    def projectName = rootProject.name
+    inputs.property 'projectName', projectName
 
-    from("LICENSE") {
+    from(rootProject.file('LICENSE')) {
         rename { "${it}_${projectName}" }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = "${project.archives_base_name}-mc${project.minecraft_version}"
+            from components.java
+        }
     }
 }

@@ -1,5 +1,7 @@
 .gradle/
+.stonecutter/
 build/
+versions/*/build/
 out/
 run/
 .idea/

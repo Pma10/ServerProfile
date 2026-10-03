@@ -1,4 +1,8 @@
-package io.github.pma10.serverprofiles;
+package io.github.pma10.serverprofiles.screen;
+
+import io.github.pma10.serverprofiles.profile.ProfileManager;
+import io.github.pma10.serverprofiles.profile.ProfileRules;
+import io.github.pma10.serverprofiles.profile.ServerProfile;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -188,7 +192,10 @@ public final class ProfilesListScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float deltaTicks) {
+        //? if >=1.20.2 {
         renderBackground(graphics, mouseX, mouseY, deltaTicks);
+        //?} else
+        /*renderBackground(graphics);*/
 
         graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
         graphics.drawCenteredString(

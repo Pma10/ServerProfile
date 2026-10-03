@@ -2,6 +2,25 @@
 
 All notable changes to Server Profiles are documented here.
 
+## 0.4.0-beta.1 - 2026-10-03
+
+### Added
+
+- Stonecutter-based multi-version build architecture.
+- Dedicated builds for 19 Minecraft targets from 1.20 through 1.21.11.
+- Version-specific Fabric API, Mod Menu, and Java toolchain pins.
+- GitHub Actions matrix builds for every supported Minecraft version.
+- Multi-JAR GitHub Releases with one artifact per Minecraft version.
+- Architecture documentation.
+
+### Changed
+
+- Reorganized Java sources into client, config, profile, screen, and integration packages.
+- Kept only shared application constants in the root Java package.
+- Release artifacts now include the Minecraft version in the JAR version.
+- Build verification now means every advertised Minecraft version compiles independently.
+
+
 ## 0.3.0-beta.2 - 2026-10-03
 
 - Changed the Java package root from `kr.pma` to `io.github.pma10`.

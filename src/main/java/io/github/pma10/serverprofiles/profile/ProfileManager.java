@@ -1,12 +1,12 @@
-package io.github.pma10.serverprofiles;
+package io.github.pma10.serverprofiles.profile;
 
 import com.google.gson.Gson;
+import io.github.pma10.serverprofiles.ServerProfiles;
+import io.github.pma10.serverprofiles.config.ProfileConfig;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Reader;
 import java.io.Writer;
@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 public final class ProfileManager {
-    private static final Logger LOGGER = LoggerFactory.getLogger("ServerProfiles");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private final Path configPath = FabricLoader.getInstance().getConfigDir().resolve("serverprofiles.json");
@@ -31,7 +30,6 @@ public final class ProfileManager {
     private ProfileConfig config;
     private SettingsSnapshot sessionBackup;
     private ProfileRules sessionRules;
-    private String activeProfile;
 
     public ProfileManager() {
         config = load();
@@ -47,14 +45,14 @@ public final class ProfileManager {
             config.recoveryBackup.apply(client.options, rules);
             persistOptions(client);
 
-            LOGGER.info("Restored client settings left behind by an interrupted Server Profiles session");
+            ServerProfiles.LOGGER.info("Restored client settings left behind by an interrupted Server Profiles session");
 
             config.recoveryBackup = null;
             config.recoveryRules = null;
             config.recoveryProfile = null;
             save();
         } catch (RuntimeException exception) {
-            LOGGER.error("Failed to restore recovery settings; the recovery snapshot was kept", exception);
+            ServerProfiles.LOGGER.error("Failed to restore recovery settings; the recovery snapshot was kept", exception);
         }
     }
 
@@ -295,7 +293,7 @@ public final class ProfileManager {
             clearSessionState();
             return true;
         } catch (RuntimeException exception) {
-            LOGGER.error("Failed to restore previous settings; the recovery snapshot was kept", exception);
+            ServerProfiles.LOGGER.error("Failed to restore previous settings; the recovery snapshot was kept", exception);
             return false;
         }
     }
@@ -326,7 +324,7 @@ public final class ProfileManager {
         ProfileRules rules = match.profile().rules == null ? new ProfileRules() : match.profile().rules;
 
         if (rules.enabledCount() == 0) {
-            LOGGER.info("Profile '{}' matched '{}' but manages no settings", match.key(), currentTarget(client));
+            ServerProfiles.LOGGER.info("Profile '{}' matched '{}' but manages no settings", match.key(), currentTarget(client));
             return;
         }
 
@@ -348,10 +346,9 @@ public final class ProfileManager {
         }
 
         match.profile().settings.apply(client.options, rules);
-        activeProfile = match.key();
         persistOptions(client);
 
-        LOGGER.info("{} Server Profiles profile '{}' for '{}'",
+        ServerProfiles.LOGGER.info("{} Server Profiles profile '{}' for '{}'",
             automatic ? "Applied" : "Manually applied",
             match.key(),
             currentTarget(client));
@@ -364,7 +361,7 @@ public final class ProfileManager {
                 sessionBackup.apply(client.options, rules);
                 persistOptions(client);
             } catch (RuntimeException exception) {
-                LOGGER.error("Failed to restore settings on disconnect; recovery data was kept", exception);
+                ServerProfiles.LOGGER.error("Failed to restore settings on disconnect; recovery data was kept", exception);
                 return;
             }
         }
@@ -375,7 +372,6 @@ public final class ProfileManager {
     private void clearSessionState() {
         sessionBackup = null;
         sessionRules = null;
-        activeProfile = null;
         config.recoveryBackup = null;
         config.recoveryRules = null;
         config.recoveryProfile = null;
@@ -412,7 +408,7 @@ public final class ProfileManager {
                     profile.normalize();
 
                     if (normalizedProfiles.put(key, profile) != null) {
-                        LOGGER.warn("Multiple profile keys normalized to '{}'; the last profile was kept", key);
+                        ServerProfiles.LOGGER.warn("Multiple profile keys normalized to '{}'; the last profile was kept", key);
                     }
                 }
             }
@@ -421,7 +417,7 @@ public final class ProfileManager {
             loaded.version = Math.max(loaded.version, 3);
             return loaded;
         } catch (Exception exception) {
-            LOGGER.error("Failed to load {}; starting with a clean config", configPath, exception);
+            ServerProfiles.LOGGER.error("Failed to load {}; starting with a clean config", configPath, exception);
             backupBrokenConfig();
             return new ProfileConfig();
         }
@@ -438,9 +434,9 @@ public final class ProfileManager {
 
         try {
             Files.move(configPath, backupPath, StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.warn("Moved unreadable Server Profiles config to {}", backupPath);
+            ServerProfiles.LOGGER.warn("Moved unreadable Server Profiles config to {}", backupPath);
         } catch (Exception backupException) {
-            LOGGER.error("Could not back up unreadable Server Profiles config", backupException);
+            ServerProfiles.LOGGER.error("Could not back up unreadable Server Profiles config", backupException);
         }
     }
 
@@ -461,7 +457,7 @@ public final class ProfileManager {
                 Files.move(temporary, configPath, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (Exception exception) {
-            LOGGER.error("Failed to save {}", configPath, exception);
+            ServerProfiles.LOGGER.error("Failed to save {}", configPath, exception);
         }
     }
 

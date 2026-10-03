@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (for example: 0.3.0-beta.1)'
+        description: 'Release version (for example: 0.4.0-beta.1)'
         required: true
         type: string
   push:
@@ -14,9 +14,33 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')
+    name: Build Minecraft ${{ matrix.minecraft }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft:
+          - '1.20'
+          - '1.20.1'
+          - '1.20.2'
+          - '1.20.3'
+          - '1.20.4'
+          - '1.20.5'
+          - '1.20.6'
+          - '1.21'
+          - '1.21.1'
+          - '1.21.2'
+          - '1.21.3'
+          - '1.21.4'
+          - '1.21.5'
+          - '1.21.6'
+          - '1.21.7'
+          - '1.21.8'
+          - '1.21.9'
+          - '1.21.10'
+          - '1.21.11'
 
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +71,40 @@ jobs:
           fi
 
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: gradle ":${{ matrix.minecraft }}:build" -Pmod_version="$VERSION" --stacktrace
+
+      - name: Upload release JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mc${{ matrix.minecraft }}
+          path: |
+            versions/${{ matrix.minecraft }}/build/libs/server-profiles-*.jar
+            !versions/${{ matrix.minecraft }}/build/libs/*-sources.jar
+            !versions/${{ matrix.minecraft }}/build/libs/*-dev.jar
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          else
+            VERSION="$(sed -n 's/^mod_version=//p' gradle.properties)"
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "TAG=v$VERSION" >> "$GITHUB_ENV"
 
       - name: Ensure release does not already exist
@@ -59,27 +117,18 @@ jobs:
             exit 1
           fi
 
-      - name: Build release jar
-        run: gradle clean build -Pmod_version="$VERSION" --stacktrace
+      - name: Download all version JARs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-mc*
+          path: release
+          merge-multiple: true
 
-      - name: Prepare release files
+      - name: Generate checksums
         shell: bash
         run: |
-          JAR="build/libs/server-profiles-${VERSION}.jar"
-          test -f "$JAR"
-
-          mkdir -p release
-          cp "$JAR" release/
-
           cd release
-          sha256sum "server-profiles-${VERSION}.jar" > SHA256SUMS.txt
-
-      - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: server-profiles-${{ env.VERSION }}
-          path: release/*
-          if-no-files-found: error
+          find . -maxdepth 1 -type f -name '*.jar' -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
 
       - name: Create GitHub release
         shell: bash

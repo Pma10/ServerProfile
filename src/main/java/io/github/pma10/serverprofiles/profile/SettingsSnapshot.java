@@ -1,7 +1,10 @@
-package io.github.pma10.serverprofiles;
+package io.github.pma10.serverprofiles.profile;
 
 import net.minecraft.client.Options;
+//? if >=1.21.2 {
 import net.minecraft.server.level.ParticleStatus;
+//?} else
+/*import net.minecraft.client.ParticleStatus;*/
 import net.minecraft.sounds.SoundSource;
 
 public final class SettingsSnapshot {
