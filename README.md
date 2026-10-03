@@ -27,14 +27,19 @@ Profiles are stored in `config/serverprofiles.json`.
 
 ## Requirements
 
+### Running the mod
+
 - Minecraft 1.21.11
 - Fabric Loader 0.19.5+
 - Fabric API
-- Java 21
+- Java 21+
 
-## Build
+### Building from source
 
-Use Gradle 9.7.1 or newer:
+- JDK 25+
+- Gradle 9.7.1+
+
+The project still compiles the mod for Java 21; JDK 25 is only required by the current Loom build tooling.
 
 ```bash
 gradle build

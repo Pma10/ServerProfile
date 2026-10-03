@@ -1,0 +1,23 @@
+{
+  "key.category.serverprofiles.general": "Server Profiles",
+  "key.serverprofiles.open": "Open Server Profiles",
+  "screen.serverprofiles.title": "Server Profiles",
+  "screen.serverprofiles.target": "Current target: %s",
+  "screen.serverprofiles.not_connected": "Not connected",
+  "screen.serverprofiles.matched": "Matched profile: %s",
+  "screen.serverprofiles.no_profile": "No matching profile",
+  "screen.serverprofiles.save": "Save current settings",
+  "screen.serverprofiles.apply": "Apply matched profile",
+  "screen.serverprofiles.delete": "Delete exact profile",
+  "screen.serverprofiles.profile_enabled": "Profile: Enabled",
+  "screen.serverprofiles.profile_disabled": "Profile: Disabled",
+  "screen.serverprofiles.restore_previous": "Restore previous settings",
+  "screen.serverprofiles.restore_on_disconnect_on": "Restore on disconnect: On",
+  "screen.serverprofiles.restore_on_disconnect_off": "Restore on disconnect: Off",
+  "screen.serverprofiles.done": "Done",
+  "screen.serverprofiles.status.saved": "Saved profile for %s",
+  "screen.serverprofiles.status.applied": "Applied %s",
+  "screen.serverprofiles.status.deleted": "Deleted profile for %s",
+  "screen.serverprofiles.status.restored": "Restored previous settings",
+  "screen.serverprofiles.status.no_backup": "No previous settings are stored"
+}
