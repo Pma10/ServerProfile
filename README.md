@@ -32,7 +32,7 @@ Each target gets its own JAR and its own GitHub Actions build.
 
 Verified targets are 1.20 through 1.20.6, 1.21 through 1.21.11, and 26.1, 26.2, 26.3.
 
-Fabric API is required. Mod Menu is optional.
+Fabric Loader 0.19.0+ and Fabric API are required. Mod Menu is optional.
 
 ## Quick start
 

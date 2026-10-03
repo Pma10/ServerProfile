@@ -2,6 +2,13 @@
 
 All notable changes to ServerProfile are documented here.
 
+## 0.5.0-beta.2 - 2026-10-04
+
+### Fixed
+
+- Separated the Fabric Loader build dependency from the runtime minimum requirement.
+- Lowered the runtime Fabric Loader minimum from 0.19.5 to 0.19.0, matching Fabric's 26.x metadata guidance and allowing Loader 0.19.3 installations to launch ServerProfile.
+
 ## 0.5.0-beta.1 - 2026-10-03
 
 ### Added
